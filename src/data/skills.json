@@ -1,0 +1,35 @@
+{
+  "Skills": [
+    { "name": "AI/ML Development", "icon": "🤖", "link": "https://developers.google.com/machine-learning" },
+    { "name": "AI Ethics", "icon": "⚖️", "link": "https://ai.google/responsibilities/responsible-ai-practices/" },
+    { "name": "App Development", "icon": "📱", "link": "https://developer.android.com/guide" },
+    { "name": "Cloud Architecture", "icon": "☁️", "link": "https://aws.amazon.com/architecture/" },
+    { "name": "NLG (Natural Language Generation)", "icon": "🖋️", "link": "https://www.gartner.com/en/information-technology/glossary/natural-language-generation-nlg" },
+    { "name": "Big Data", "icon": "📦", "link": "https://aws.amazon.com/big-data/" },
+    { "name": "Computer Vision", "icon": "👁️", "link": "https://opencv.org/" },
+    { "name": "RPA (Robotic Process Automation)", "icon": "🤖", "link": "https://www.uipath.com/rpa" },
+    { "name": "Web Crawling", "icon": "🌐", "link": "https://www.scrapy.org/" }
+  ],
+  "Stacks": [
+    { "name": "Flutter", "icon": "📲", "link": "https://flutter.dev/" },
+    { "name": "FastAPI", "icon": "🚀", "link": "https://fastapi.tiangolo.com/" },
+    { "name": "React.js", "icon": "⚛️", "link": "https://reactjs.org/" },
+    { "name": "Flask", "icon": "🐍", "link": "https://flask.palletsprojects.com/" },
+    { "name": "Express.js", "icon": "🟩", "link": "https://expressjs.com/" },
+    { "name": "RESTful APIs", "icon": "🔗", "link": "https://restfulapi.net/" },
+    { "name": "PyTorch", "icon": "🔥", "link": "https://pytorch.org/" },
+    { "name": "TensorFlow", "icon": "🧠", "link": "https://www.tensorflow.org/" },
+    { "name": "GraphQL", "icon": "🕸️", "link": "https://graphql.org/" }
+  ],
+  "Tools": [
+    { "name": "Git", "icon": "🐙", "link": "https://git-scm.com/" },
+    { "name": "VSCode", "icon": "🖥️", "link": "https://code.visualstudio.com/" },
+    { "name": "Docker", "icon": "🐋", "link": "https://www.docker.com/" },
+    { "name": "Terraform", "icon": "⚙️", "link": "https://www.terraform.io/" },
+    { "name": "CI/CD Pipelines", "icon": "🚀", "link": "https://www.redhat.com/en/topics/devops/what-are-ci-cd-pipelines" },
+    { "name": "GCP", "icon": "☁️", "link": "https://cloud.google.com/" },
+    { "name": "AWS", "icon": "☁️", "link": "https://aws.amazon.com/" },
+    { "name": "Kubernetes", "icon": "☸️", "link": "https://kubernetes.io/" },
+    { "name": "Jenkins", "icon": "🔧", "link": "https://www.jenkins.io/" }
+  ]
+}

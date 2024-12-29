@@ -1,0 +1,83 @@
+[
+    {
+      "title": "General Scheduler",
+      "description": "Timetable scheduling balances constraints to assign classes, teachers, and rooms to time slots",
+      "image": "https://opengraph.githubassets.com/[RANDOM_HASH]/immkg/general-scheduler",
+      "linkLabel": "Find More",
+      "linkIcon": "FaGithub",
+      "linkUrl": "https://github.com/immkg/general-scheduler",
+      "ctas": [
+        {
+          "icon": "FaRegStar",
+          "label": "Star",
+          "link": "https://github.com/immkg/general-scheduler/stargazers"
+        },
+        {
+          "icon": "FaCodeFork",
+          "label": "Fork",
+          "link": "https://github.com/immkg/general-scheduler/fork"
+        }
+      ]
+    },
+    {
+      "title": "Locum Healthcare",
+      "description": "Showcasing the Locum Healthcare app for job management, built with Flutter and Firebase",
+      "video": "https://drive.google.com/file/d/1Vt0wpQjJ793EkdujfR5GYxsqma8Vtc2v/preview",
+      "linkLabel": "View More",
+      "linkIcon": "FaVideo",
+      "linkUrl": "https://drive.google.com/file/d/1Vt0wpQjJ793EkdujfR5GYxsqma8Vtc2v/view?usp=sharing",
+      "ctas": [
+        {
+          "icon": "FaComment",
+          "label": "Comment",
+          "link": "https://drive.google.com/file/d/1Vt0wpQjJ793EkdujfR5GYxsqma8Vtc2v/view?usp=drive_link"
+        },
+        {
+          "icon": "FaDownload",
+          "label": "Download",
+          "link": "https://drive.google.com/uc?export=download&id=1Vt0wpQjJ793EkdujfR5GYxsqma8Vtc2v"
+        }
+      ]
+    },
+    {
+      "title": "Portfolio",
+      "description": "A showcase of my projects and skills across various domains and technologies",
+      "image": "https://opengraph.githubassets.com/[RANDOM_HASH]/immkg/portfolio",
+      "linkLabel": "Find More",
+      "linkIcon": "FaGithub",
+      "linkUrl": "https://github.com/immkg/portfolio",
+      "ctas": [
+        {
+          "icon": "FaRegStar",
+          "label": "Star",
+          "link": "https://github.com/immkg/portfolio/stargazers"
+        },
+        {
+          "icon": "FaCodeFork",
+          "label": "Fork",
+          "link": "https://github.com/immkg/portfolio/fork"
+        }
+      ]
+    },
+    {
+      "title": "Proposal Writing",
+      "description": "Comprehensive technical proposal ensuring scalable, reliable solutions with clear milestones",
+      "image": "https://s11.gifyu.com/images/SAqzi.gif",
+      "linkLabel": "Read More",
+      "linkIcon": "FaGoogleDrive",
+      "linkUrl": "https://docs.google.com/document/d/1-H4dDthpIiFOcHmmMsmtS9J05O6d9BdGRyP1DqiQr0Y/edit",
+      "ctas": [
+        {
+          "icon": "FaCopy",
+          "label": "Copy",
+          "link": "https://docs.google.com/document/d/1-H4dDthpIiFOcHmmMsmtS9J05O6d9BdGRyP1DqiQr0Y/copy"
+        },
+        {
+          "icon": "FaDownload",
+          "label": "Download",
+          "link": "https://docs.google.com/document/d/1-H4dDthpIiFOcHmmMsmtS9J05O6d9BdGRyP1DqiQr0Y/export?format=pdf"
+        }
+      ]
+    }
+  ]
+  

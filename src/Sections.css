@@ -1,0 +1,363 @@
+/* Import Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Roboto:wght@400&display=swap");
+
+/* Skills Section */
+.skills {
+  padding: 20px;
+  text-align: center;
+  font-family: "Arial", sans-serif;
+}
+
+.skills h2 {
+  margin-bottom: 10px;
+}
+
+.skills ul {
+  list-style: none;
+  padding: 0;
+}
+
+.skills li {
+  margin: 5px 0;
+}
+
+/* About Section */
+.about {
+  padding: 20px;
+  text-align: center;
+}
+
+.about h2 {
+  margin-bottom: 10px;
+}
+
+.about p {
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Hero Section */
+.hero {
+  color: var(--text);
+  font-family: "Poppins", sans-serif;
+}
+
+.hero h1 {
+  font-size: 3rem; /* Larger size for the heading */
+  font-family: "Poppins", sans-serif; /* Poppins for heading */
+  margin-bottom: 2px; /* Reduced space between heading and subtitle */
+  white-space: nowrap; /* Prevents wrapping */
+  overflow: hidden; /* Hides overflowed text */
+  max-width: 100%;
+}
+
+.hero .subtitle {
+  margin-top: 2px;
+  font-size: 1.2rem;
+  font-family: "Roboto", sans-serif; /* Roboto for subtitle */
+  color: var(--text-alt);
+}
+
+/* Hero Image with Fluid Border */
+.hero img {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(270deg, #ff007a, #007aff, #00ff88);
+  padding: 5px;
+}
+
+/* CTA Buttons */
+.cta-buttons {
+  margin-top: 20px;
+  display: flex;
+}
+
+.cta-buttons .btn {
+  margin-inline: 5px;
+  padding: 10px 20px;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  text-decoration: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  box-shadow: 0px 3px 10px var(--shadow-bg);
+}
+
+.cta-buttons .btn svg {
+  margin-right: 8px;
+}
+
+.cta-buttons .btn:hover {
+  background-color: #005fc5;
+}
+
+/* Social Media Icons */
+.social-icons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 10px 0;
+}
+
+.social-icons a {
+  font-size: 2rem;
+  color: var(--text);
+  transition: color 0.3s ease;
+}
+
+.social-icons a:hover {
+  color: var(--sidebar-hover);
+}
+
+/* Card Styling */
+.link-card {
+  width: 300px;
+  margin: 20px;
+  box-shadow: 0px 5px 15px var(--shadow-bg);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+}
+
+.link-card a {
+  text-decoration: none;
+}
+
+.link-card:hover {
+  transform: translateY(-10px);
+}
+
+.card-content {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-image img {
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+}
+
+.card-details {
+  padding: 12px;
+}
+
+.card-details h3 {
+  margin: 0;
+  font-size: 1.2em;
+}
+
+.card-details p {
+  margin: 2px 0 0;
+  font-size: 0.8em;
+}
+
+/* Grid for Cards */
+.link-card-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  padding: 20px;
+}
+
+.image-wrapper {
+  background-color: white;
+  width: 100%;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.links {
+  font-family: "Arial", sans-serif;
+}
+
+.links h2 {
+  font-size: 2rem;
+  margin-bottom: 50px;
+}
+
+.skills h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+}
+
+.projects {
+  font-family: "Arial", sans-serif;
+  height: max-content;
+  min-height: 100svh;
+}
+
+.projects h2 {
+  font-size: 2rem;
+  margin-bottom: 50px;
+}
+
+/* Project Cards Styling */
+.project-card {
+  width: 300px;
+  margin: 20px;
+  box-shadow: 0px 5px 15px var(--shadow-bg);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+}
+
+.project-card:hover {
+  transform: translateY(-10px);
+}
+
+.project-image {
+  height: 150px;
+}
+
+.project-image img {
+  width: 100%;
+  height: 150px;
+  object-fit: fill;
+}
+
+.project-details {
+  padding-inline: 15px;
+  padding-bottom: 10px;
+  text-align: left;
+}
+
+.project-details h3 {
+  margin: 0;
+  margin-block: 5px;
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+.project-details p {
+  margin: 0;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  color: var(--text-alt);
+  height: 72px;
+}
+
+.project-link {
+  font-size: 1rem;
+  text-decoration: none;
+  align-items: center;
+  display: inline-flex;
+}
+
+.project-link:hover {
+  text-decoration: underline;
+}
+
+.project-links a {
+  text-decoration: none;
+  color: #007aff;
+  font-size: 1rem;
+  transition: color 0.3s ease;
+  margin-right: 10px;
+  display: inline-block;
+}
+
+.project-links a:hover {
+  color: #005fc5;
+}
+
+.project-links .icon {
+  margin-left: 8px;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cta-buttons .btn {
+  padding: 8px 16px;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.3s ease;
+}
+
+.cta-buttons .btn:hover {
+  background-color: #005fc5;
+}
+
+.cta-buttons .icon {
+  margin-right: 5px;
+}
+
+/* Container for the Project Cards */
+.project-card-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 items per row */
+  gap: 20px; /* Add space between the grid items */
+  padding: 20px;
+}
+
+@media (max-width: 1024px) {
+  .project-card-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile Styles */
+@media screen and (max-width: 768px) {
+  .link-card-container {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 40px;
+  }
+
+  .link-card {
+    width: auto;
+    margin: 5px;
+  }
+
+  .image-wrapper {
+    height: 90px;
+  }
+
+  .skills,
+  .about,
+  .hero,
+  .links,
+  .hero,
+  .projects {
+    padding-top: 100px;
+    padding-inline: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: 2rem; /* Smaller font for mobile */
+    max-width: 90vw; /* Ensure max width is relative to viewport on mobile */
+    overflow: hidden; /* Hide overflow */
+  }
+
+  .hero .subtitle {
+    font-size: 1rem; /* Slightly smaller subtitle for mobile */
+  }
+
+  .project-card-container {
+    grid-template-columns: 1fr; /* 1 column per row for smaller screens */
+  }
+}

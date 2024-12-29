@@ -1,0 +1,66 @@
+[
+  {
+    "type": "Education",
+    "logo": "https://iitpkd.ac.in/sites/default/files/inline-images/IIT_PKD_short%20logo_RGB.jpg",
+    "title": "Indian Institute of Technology, Palakkad",
+    "subtitle": "Bachelor of Technology (B.Tech), Mechanical Engineering",
+    "description": "",
+    "start": "Aug, 2015",
+    "end": "Aug, 2019",
+    "id": "engineering"
+  },
+  {
+    "type": "Work",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/6/69/IIT_Madras_Logo.svg/1200px-IIT_Madras_Logo.svg.png",
+    "title": "Indian Institute of Technology, Madras",
+    "subtitle": "Research Intern",
+    "description": "Under guidance of Dr. Balaganesan G, worked on life cycle analysis during manufacturing of polymer matrix composites.",
+    "start": "Apr, 2017",
+    "end": "Jun, 2017"
+  },
+  {
+    "type": "Work",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/6/69/IIT_Madras_Logo.svg/1200px-IIT_Madras_Logo.svg.png",
+    "title": "Indian Institute of Technology, Madras",
+    "subtitle": "Research Intern",
+    "description": "Under guidance of Prof. Gandham Phanikumar, performed simulation in Simufact Additive for materials with varying density profiles.",
+    "start": "May, 2018",
+    "end": "Jul, 2018"
+  },
+  {
+    "type": "Work",
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/1/10/AUT_Logo_New.jpg",
+    "title": "Auckland University of Technology, New Zealand",
+    "subtitle": "International Intern",
+    "description": "Under guidance of Dr David White, developed a lumped mathematical model with GUI for accounting nitric oxide (NO) discharge.",
+    "start": "Mar, 2019",
+    "end": "Apr, 2019"
+  },
+  {
+    "type": "Work",
+    "logo": "https://media.glassdoor.com/sqll/1361202/smarter-codes-squarelogo-1520497826891.png",
+    "title": "Smarter.Codes",
+    "subtitle": "Full-Stack Engineer",
+    "description": "Software development for projects spanning multiple micro services, determining technology stack, planning architecture diagram, creating application, and managing deployments for the production.",
+    "start": "Jun, 2019",
+    "end": "Feb, 2020"
+  },
+  {
+    "type": "Work",
+    "logo": "https://media.glassdoor.com/sqll/1361202/smarter-codes-squarelogo-1520497826891.png",
+    "title": "Smarter.Codes",
+    "subtitle": "Program Manager",
+    "description": "Led a team of 10+ developers across multiple projects. Managed program's strategy and objectives, organized project milestones, tracked their progress and ensured positive health status.",
+    "start": "Feb, 2020",
+    "end": "Dec, 2021"
+  },
+  {
+    "type": "Work",
+    "logo": "https://media.glassdoor.com/sqll/1361202/smarter-codes-squarelogo-1520497826891.png",
+    "title": "Smarter.Codes",
+    "subtitle": "Chief Technology Officer (CTO)", 
+    "description": "Successfully manage the development of 20+ products. Mentoring team of 20+ passionate engineers and building strong engineering culture within the team. Managed tech onboarding and custom development of 100+ enterprises",
+    "start": "Dec, 2021",
+    "end": "Present"
+  }
+]

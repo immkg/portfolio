@@ -1,0 +1,43 @@
+{
+  "name": "Mayank Kumar Gupta",
+  "email": "mayankgupta690@gmail.com",
+  "phone": "+91-9450415368",
+  "subtitle": "Driving innovation with AI, cutting-edge tech, and strategic vision",
+  "greeting": "👋 Hello!",
+  "description": "I'm passionate about AI and entrepreneurship, driven to create innovative solutions that harness technology and automation to save time and enhance efficiency.",
+  "education": "With an <a href=\"#timeline-engineering\">engineering</a> degree, I have a strong foundation in technical principles, driving me to innovate and enhance industries through advanced <a href=\"#skills\">technologies</a>.",
+  "beliefAndGoal": "I believe AI can transform industries. I aim to create <a href=\"#projects\">advancements</a> that enhance operational efficiency and drive innovation. 🚀",
+  "socialLinks": {
+    "github": {
+      "url": "https://github.com/immkg",
+      "title": "GitHub",
+      "strong": "Explore ",
+      "description": "my projects and code on GitHub.",
+      "image": "https://static.wikia.nocookie.net/windows/images/0/01/GitHub_logo_2013.png"
+    },
+    "linkedin": {
+      "url": "https://www.linkedin.com/in/immkg/",
+      "title": "LinkedIn",
+      "strong": "Join ",
+      "description": "me on LinkedIn for work connections.",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/LinkedIn_Logo.svg/640px-LinkedIn_Logo.svg.png"
+    },
+    "medium": {
+      "url": "https://immkg.medium.com/",
+      "title": "Medium",
+      "strong": "Read ",
+      "description": "on Medium where I write about tech.",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Medium_%28website%29_logo.svg/640px-Medium_%28website%29_logo.svg.png"
+    },
+    "upwork": {
+      "url": "https://www.upwork.com/freelancers/~0126356b4f4c0f18f4",
+      "title": "Upwork",
+      "strong": "Find ",
+      "description": "me on Upwork, where I offer my skills.",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Upwork-logo.svg/640px-Upwork-logo.svg.png"
+    }
+  },
+  "logo": "/portfolio/logo512.png",
+  "resume": "/portfolio/resume.pdf",
+  "copyright": "© 2024 Mayank Kumar Gupta. All Rights Reserved."
+}
