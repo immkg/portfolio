@@ -298,3 +298,18 @@ body:has(.world) .title-block { display: none; }
   padding: 0.35rem 1rem; text-decoration: none; font-size: var(--step--1);
 }
 .world-leave:hover { background: var(--paper-2); }
+
+/* ---------- the studio ---------- */
+
+.studio-tag {
+  background: var(--paper-2);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+.studio-tag.is-blank { border-style: dashed; color: var(--ink-3); }
+.studio-blank { color: var(--ink-3); font-style: italic; }
+button.world-enter { background: none; font: inherit; cursor: pointer; }
