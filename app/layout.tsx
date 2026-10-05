@@ -29,11 +29,8 @@ export const metadata: Metadata = {
 };
 
 const SHEETS = [
-  { href: "/", label: "Plot" },
-  { href: "/journey/", label: "Journey" },
   { href: "/work/", label: "Work" },
-  { href: "/stats/", label: "Numbers" },
-  { href: "/craft/", label: "How this is built" },
+  { href: "/journey/", label: "Journey" },
   { href: "/about/", label: "About" },
 ];
 
@@ -57,11 +54,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <footer className="band">
           <div className="sheet datum">
-            <p className="plot-row-meta" style={{ maxWidth: "60ch" }}>
-              Everything on this site is drawn from a record of the work itself —
-              tickets, commits, reviews and the diagrams drawn at the time. Client
-              names and client-owned product names are replaced by what the client
-              does. Figures are rounded down.
+            <p style={{ color: "var(--ink-3)", fontSize: "var(--step--1)", maxWidth: "58ch" }}>
+              Generated from a record of the work itself — tickets, commits, reviews
+              and the diagrams drawn at the time. Clients are described by what they
+              do rather than named, and figures are rounded down.
             </p>
             <p>
               <a href="mailto:mayankgupta690@gmail.com">mayankgupta690@gmail.com</a>

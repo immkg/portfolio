@@ -1,38 +1,44 @@
 /* ============================================================
-   A drawing set, not a web page.
-   Ground is blueprint ink; linework is paper-white; two plotter
-   pens (cyan, amber) carry all the colour there is.
+   A plotter on bright paper. Seven coloured pens, one per kind
+   of problem, so colour carries meaning rather than decoration.
    ============================================================ */
 
 :root {
-  --ground: #071017;        /* drafting film under light */
-  --ground-2: #0b1a22;      /* raised plane: panels, title block */
-  --rule: #16303c;          /* hairline grid */
-  --rule-bright: #23505f;   /* datum rules, axes */
-  --ink: #e8f1f2;           /* lettering */
-  --ink-2: #9db4bc;         /* secondary lettering */
-  --ink-3: #5d7a85;         /* dimensions, notes */
-  --pen-1: #49bcc4;         /* pen 1 — mine */
-  --pen-2: #e9b44c;         /* pen 2 — led, emphasis */
+  --paper: #fbfcff;         /* cool bright stock, not cream */
+  --paper-2: #ffffff;
+  --tint: #f1f4fb;          /* panels and raised planes */
+  --rule: #dfe5f2;          /* hairline grid */
+  --rule-bright: #b9c4dc;   /* datum rules, axes */
+  --ink: #1b2437;           /* lettering */
+  --ink-2: #4e5a74;
+  --ink-3: #7b87a3;         /* dimensions and notes */
 
-  --sheet: min(1180px, 100% - 3rem);
-  --measure: 66ch;
+  /* the seven pens: saturated for line, pastel for fill */
+  --p-doc: #5a62e8;      --f-doc: #dcdefb;
+  --p-conv: #12a98a;     --f-conv: #cdf0e6;
+  --p-search: #e0557f;   --f-search: #fbd9e3;
+  --p-saas: #d8871a;     --f-saas: #fbe6c6;
+  --p-crawl: #2b92d8;    --f-crawl: #d2e9fa;
+  --p-auto: #9a56c7;     --f-auto: #ecd9f7;
+  --p-plat: #6b953a;     --f-plat: #dfecc9;
 
-  --step--1: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
-  --step-0: clamp(0.95rem, 0.92rem + 0.15vw, 1.05rem);
-  --step-1: clamp(1.15rem, 1.05rem + 0.5vw, 1.45rem);
-  --step-2: clamp(1.5rem, 1.25rem + 1.2vw, 2.3rem);
-  --step-3: clamp(2rem, 1.4rem + 3vw, 4rem);
-  --step-4: clamp(2.4rem, 1.5rem + 3.6vw, 4.4rem);
+  --sheet: min(1120px, 100% - 3rem);
+  --measure: 62ch;
+
+  --step--1: clamp(0.8rem, 0.78rem + 0.1vw, 0.86rem);
+  --step-0: clamp(0.98rem, 0.95rem + 0.15vw, 1.08rem);
+  --step-1: clamp(1.15rem, 1.05rem + 0.5vw, 1.4rem);
+  --step-2: clamp(1.45rem, 1.2rem + 1.1vw, 2.1rem);
+  --step-3: clamp(1.9rem, 1.4rem + 2.4vw, 3.2rem);
+  --step-4: clamp(2.3rem, 1.5rem + 3.4vw, 4.2rem);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-
 html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background: var(--ground);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
   font-size: var(--step-0);
@@ -41,7 +47,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* The drafting grid. Fixed, so content slides over a still sheet. */
+/* plotting paper, fading out below the first screen */
 body::before {
   content: "";
   position: fixed;
@@ -51,206 +57,164 @@ body::before {
   background-image:
     linear-gradient(to right, var(--rule) 1px, transparent 1px),
     linear-gradient(to bottom, var(--rule) 1px, transparent 1px);
-  background-size: 96px 96px;
-  opacity: 0.38;
-  mask-image: radial-gradient(ellipse 120% 90% at 50% 0%, #000 35%, transparent 100%);
+  background-size: 88px 88px;
+  opacity: 0.75;
+  mask-image: radial-gradient(ellipse 110% 80% at 50% 0%, #000 30%, transparent 100%);
 }
 
 main, header, footer { position: relative; z-index: 1; }
 
-h1, h2, h3 { font-weight: 500; line-height: 1.1; margin: 0; text-wrap: balance; }
-h1 { font-size: var(--step-4); font-stretch: 125%; letter-spacing: -0.02em; }
+h1, h2, h3 { font-weight: 500; line-height: 1.08; margin: 0; text-wrap: balance; }
+h1 { font-size: var(--step-4); font-stretch: 125%; letter-spacing: -0.022em; }
 h2 { font-size: var(--step-2); font-stretch: 112%; }
 h3 { font-size: var(--step-1); }
 p { margin: 0 0 1em; max-width: var(--measure); }
 a { color: var(--ink); text-decoration-color: var(--rule-bright); text-underline-offset: 0.25em; }
-a:hover { text-decoration-color: var(--pen-1); }
-:focus-visible { outline: 2px solid var(--pen-1); outline-offset: 3px; }
-
-/* ---------- the sheet ---------- */
+a:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--p-doc); outline-offset: 3px; }
 
 .sheet { width: var(--sheet); margin-inline: auto; }
+.datum { border-left: 1px solid var(--rule-bright); padding-left: clamp(1rem, 3vw, 2.4rem); }
+.band { padding-block: clamp(2.5rem, 6vh, 4.5rem); }
+.band + .band { border-top: 1px solid var(--rule); }
+.lede { font-size: var(--step-1); color: var(--ink-2); max-width: 52ch; }
 
-/* A datum line down the left, the way a drawing hangs off an edge. */
-.datum {
-  border-left: 1px solid var(--rule-bright);
-  padding-left: clamp(1rem, 3vw, 2.5rem);
-}
-
-/* ---------- dimension line: the time axis, carrying real years ---------- */
-
-.dimension {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--ink-3);
-  font-size: var(--step--1);
-}
-.dimension-track {
-  flex: 1;
-  height: 1px;
-  background: var(--rule-bright);
-  position: relative;
-}
-.dimension-track::before,
-.dimension-track::after {
-  content: "";
-  position: absolute;
-  top: -4px;
-  width: 1px;
-  height: 9px;
-  background: var(--rule-bright);
-}
-.dimension-track::before { left: 0; }
-.dimension-track::after { right: 0; }
-.dimension-tick {
-  position: absolute;
-  top: -3px;
-  width: 1px;
-  height: 7px;
-  background: var(--rule);
-}
-
-/* ---------- title block, lower right, always says where you are ---------- */
-
-.title-block {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: grid;
-  grid-template-columns: auto auto;
-  background: var(--ground-2);
-  border-top: 1px solid var(--rule-bright);
-  border-left: 1px solid var(--rule-bright);
-  font-size: var(--step--1);
-  color: var(--ink-3);
-}
-.title-block > * {
-  padding: 0.4rem 0.9rem;
-  border-left: 1px solid var(--rule);
-}
-.title-block > *:first-child { border-left: 0; }
-.title-block b { color: var(--ink-2); font-weight: 500; }
-
-/* ---------- sheet index: the nav ---------- */
+/* ---------- sheet index ---------- */
 
 .index {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: color-mix(in oklab, var(--ground) 88%, transparent);
+  position: sticky; top: 0; z-index: 30;
+  background: color-mix(in oklab, var(--paper) 90%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--rule);
 }
 .index-inner {
-  width: var(--sheet);
-  margin-inline: auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 1.4rem;
-  padding: 0.7rem 0;
-  font-size: var(--step--1);
+  width: var(--sheet); margin-inline: auto;
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 0.25rem 1.4rem; padding: 0.7rem 0; font-size: var(--step--1);
 }
-.index-name { font-stretch: 125%; font-weight: 500; color: var(--ink); margin-right: auto; }
+.index-name { font-stretch: 125%; font-weight: 500; margin-right: auto; text-decoration: none; }
 .index a { color: var(--ink-3); text-decoration: none; }
-.index a:hover, .index a[data-here] { color: var(--ink); }
-.index a[data-here] { box-shadow: 0 1px 0 var(--pen-1); }
+.index a:hover { color: var(--ink); }
 
-/* ---------- plotted rows: the work index ---------- */
+/* ---------- title block ---------- */
 
-.plot-rows { border-top: 1px solid var(--rule); }
-.plot-row {
-  display: grid;
-  grid-template-columns: 1.6rem minmax(0, 1fr) 7rem 5.5rem 6.5rem;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.72rem 0;
-  border-bottom: 1px solid var(--rule);
+.title-block {
+  position: fixed; right: 0; bottom: 0; z-index: 40;
+  display: grid; grid-template-columns: auto auto;
+  background: var(--paper-2);
+  border-top: 1px solid var(--rule-bright);
+  border-left: 1px solid var(--rule-bright);
+  font-size: var(--step--1); color: var(--ink-3);
+}
+.title-block > * { padding: 0.4rem 0.9rem; border-left: 1px solid var(--rule); }
+.title-block > *:first-child { border-left: 0; }
+.title-block b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- the seven pens, applied by data-domain ---------- */
+
+[data-domain="document-ai"]       { --pen: var(--p-doc);    --fill: var(--f-doc); }
+[data-domain="conversational-ai"] { --pen: var(--p-conv);   --fill: var(--f-conv); }
+[data-domain="search-commerce"]   { --pen: var(--p-search); --fill: var(--f-search); }
+[data-domain="product-saas"]      { --pen: var(--p-saas);   --fill: var(--f-saas); }
+[data-domain="data-crawling"]     { --pen: var(--p-crawl);  --fill: var(--f-crawl); }
+[data-domain="automation"]        { --pen: var(--p-auto);   --fill: var(--f-auto); }
+[data-domain="platform-internal"] { --pen: var(--p-plat);   --fill: var(--f-plat); }
+
+/* ---------- case list: a colour block, not a shadowed card ---------- */
+
+.cases { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+@media (min-width: 760px) { .cases { grid-template-columns: 1fr 1fr; } }
+
+.case {
+  background: var(--paper-2);
+  padding: 1.1rem 1.2rem 1.2rem;
   text-decoration: none;
   color: inherit;
+  display: block;
+  border-top: 3px solid var(--pen, var(--rule-bright));
 }
-.plot-row:hover { background: var(--ground-2); }
-.plot-row-label { font-stretch: 105%; }
-.plot-row-meta { color: var(--ink-3); font-size: var(--step--1); }
-.plot-row-bar { height: 3px; background: var(--rule-bright); position: relative; top: -0.2em; }
-.plot-row-bar span { position: absolute; inset: 0 auto 0 0; background: var(--pen-1); }
-.plot-row[data-case] .plot-row-label { color: var(--ink); }
-.plot-row[data-case] .plot-row-label::after {
-  content: "";
-  display: inline-block;
-  width: 5px; height: 5px;
-  margin-left: 0.5em;
-  background: var(--pen-2);
-  vertical-align: 0.15em;
-}
+.case:hover { background: var(--fill, var(--tint)); }
+.case-kind { color: var(--pen); font-size: var(--step--1); }
+.case-name { font-size: var(--step-1); font-stretch: 108%; margin: 0.15rem 0 0.4rem; }
+.case-line { color: var(--ink-2); margin: 0; max-width: 46ch; }
+.case-meta { color: var(--ink-3); font-size: var(--step--1); margin-top: 0.7rem; }
 
-/* ---------- readout: numbers with their units, in a dimension grid ---------- */
+/* ---------- readout ---------- */
 
 .readout { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
-.readout-cell { background: var(--ground); padding: 0.9rem 1rem; }
+.readout-cell { background: var(--paper-2); padding: 0.9rem 1rem; }
 .readout-value { font-size: var(--step-2); font-stretch: 125%; line-height: 1; }
 .readout-label { color: var(--ink-3); font-size: var(--step--1); margin-top: 0.35rem; }
 
-/* ---------- prose blocks inside a case ---------- */
+/* ---------- era rows ---------- */
 
-.note { border-left: 2px solid var(--pen-2); padding-left: 1rem; }
-.note > :last-child { margin-bottom: 0; }
+.eras { border-top: 1px solid var(--rule); }
+.era {
+  display: grid; grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 1.2rem; padding: 1rem 0; border-bottom: 1px solid var(--rule);
+}
+.era-when { color: var(--ink-3); font-size: var(--step--1); }
+.era-what { font-size: var(--step-1); font-stretch: 105%; }
+.era-org { color: var(--ink-3); font-size: var(--step--1); }
 
-.star { display: grid; gap: 0.1rem; }
-.star > div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 1rem; padding: 0.55rem 0; border-top: 1px solid var(--rule); }
+/* ---------- legend ---------- */
+
+.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; padding: 0; margin: 0; list-style: none; font-size: var(--step--1); }
+.legend li { display: flex; align-items: center; gap: 0.45rem; color: var(--ink-2); }
+.legend b { font-weight: 500; color: var(--ink-3); }
+
+/* ---------- the long version, folded away by default ---------- */
+
+details.long { border-top: 1px solid var(--rule); margin-top: 2rem; }
+details.long > summary {
+  cursor: pointer; padding: 0.9rem 0; color: var(--ink-2); font-size: var(--step--1);
+  list-style: none;
+}
+details.long > summary::-webkit-details-marker { display: none; }
+details.long > summary::before { content: "+ "; color: var(--pen, var(--ink-3)); }
+details.long[open] > summary::before { content: "– "; }
+details.long > summary:hover { color: var(--ink); }
+
+.star { display: grid; }
+.star > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 1rem; padding: 0.6rem 0; border-top: 1px solid var(--rule); }
 .star dt { color: var(--ink-3); font-size: var(--step--1); }
 .star p { margin: 0; }
 
-.diagram {
-  border: 1px solid var(--rule);
-  background: var(--ground-2);
-  padding: 1rem;
-  overflow-x: auto;
-}
-.diagram pre {
-  margin: 0;
-  font-size: var(--step--1);
-  color: var(--ink-2);
-  white-space: pre;
-}
+/* ---------- diagram ---------- */
+
+.diagram { border: 1px solid var(--rule); background: var(--tint); padding: 1rem; overflow-x: auto; }
+.diagram pre { margin: 0; font-size: var(--step--1); color: var(--ink-2); white-space: pre; }
 
 .stack { display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; padding: 0; margin: 0; list-style: none; }
-.stack li { border: 1px solid var(--rule-bright); padding: 0.1rem 0.5rem; color: var(--ink-2); font-size: var(--step--1); }
+.stack li { border: 1px solid var(--rule-bright); border-radius: 2px; padding: 0.1rem 0.5rem; color: var(--ink-2); font-size: var(--step--1); }
 
-/* ---------- spacing rhythm ---------- */
+/* ---------- the rest, named but not expanded ---------- */
 
-.band { padding-block: clamp(3rem, 8vh, 6rem); }
-.band + .band { border-top: 1px solid var(--rule); }
-.lede { font-size: var(--step-1); color: var(--ink-2); max-width: 54ch; }
-
-@media (max-width: 720px) {
-  .plot-row { grid-template-columns: 1.2rem minmax(0, 1fr) 4.5rem; }
-  .plot-row > :nth-child(4), .plot-row > :nth-child(5) { display: none; }
-  .title-block { display: none; }
-  body::before { background-size: 64px 64px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
-  }
-}
+.rest { columns: 3 13rem; column-gap: 2rem; color: var(--ink-3); font-size: var(--step--1); }
+.rest span { display: block; break-inside: avoid; padding: 0.12rem 0; }
 
 /* ---------- the plot ---------- */
 
 .plot svg a { cursor: pointer; }
 .plot .plot-mark { transition: opacity 140ms linear; }
 .plot svg a:hover .plot-mark { opacity: 1; }
-.plot svg a:hover .plot-mark > :first-child { stroke-width: 2.4; }
-.plot svg a:focus-visible { outline: 2px solid var(--pen-1); outline-offset: 2px; }
+.plot svg a:focus-visible { outline: 2px solid var(--p-doc); outline-offset: 2px; }
 
-/* On a narrow screen the plot would compress past legibility, so it keeps its
-   own width and scrolls inside its figure rather than squeezing. */
 @media (max-width: 720px) {
   .plot { overflow-x: auto; overscroll-behavior-x: contain; }
-  .plot svg { min-width: 620px; }
+  .plot svg { min-width: 600px; }
   .plot figcaption { position: sticky; left: 0; }
+  .title-block { display: none; }
+  .era { grid-template-columns: 1fr; gap: 0.2rem; }
+  .rest { columns: 2 9rem; }
+  body::before { background-size: 60px 60px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* An odd number of cases would leave a coloured gap in the last row. */
+@media (min-width: 760px) {
+  .case:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }

@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import Dimension from "@/components/Dimension";
-import WorkRow from "@/components/WorkRow";
-import { constellation, DOMAIN, num } from "@/lib/data";
+import CaseList from "@/components/CaseList";
+import Legend from "@/components/Legend";
+import { constellation, DOMAIN } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Work",
   description:
-    "Every project on the record: 77 of them across document AI, conversational AI, " +
-    "search, crawling, automation and platform work, with dates, team size and my share.",
+    "Nine projects written up — document AI, conversational AI, search, hospitality " +
+    "and the internal platform — out of 77 on the record.",
 };
 
 export default function Work() {
   const c = constellation();
-  const byDomain = c.bands
-    .map((d) => ({ domain: d, nodes: c.nodes.filter((n) => n.domain === d).sort((a, b) => b.mine - a.mine) }))
-    .filter((g) => g.nodes.length);
+  const rest = c.nodes
+    .filter((n) => !n.case)
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <main>
@@ -22,32 +22,35 @@ export default function Work() {
         <div className="sheet datum">
           <h1 style={{ fontSize: "var(--step-3)" }}>Work</h1>
           <p className="lede">
-            Every project the record holds, grouped by the kind of problem it was.
-            The bar on the right is my share of the activity on it — not a rating,
-            just how much of the traffic was mine. Nine have a case study behind
-            them, marked in amber.
+            Nine projects are written up. They are the ones where I can say
+            something specific about what was decided and what changed.
           </p>
-          <div style={{ maxWidth: "34rem", marginTop: "2rem" }}>
-            <Dimension from={c.span.first} to={c.span.last} />
+          <div style={{ marginTop: "1.8rem" }}>
+            <CaseList />
           </div>
         </div>
       </section>
 
-      {byDomain.map((g) => (
-        <section className="band" key={g.domain} id={g.domain}>
-          <div className="sheet datum">
-            <h2>{DOMAIN[g.domain]}</h2>
-            <p className="plot-row-meta">
-              {g.nodes.length} projects, {num(g.nodes.reduce((t, n) => t + n.mine, 0))} events mine
-            </p>
-            <div className="plot-rows" style={{ marginTop: "1.5rem" }}>
-              {g.nodes.map((n) => (
-                <WorkRow key={n.slug} n={n} />
-              ))}
-            </div>
+      <section className="band">
+        <div className="sheet datum">
+          <h2>The other {rest.length}</h2>
+          <p className="lede">
+            Counted in the numbers, not written up. Mostly smaller engagements and
+            internal systems.
+          </p>
+          <div style={{ marginTop: "1.5rem" }}>
+            <Legend />
           </div>
-        </section>
-      ))}
+          <div className="rest" style={{ marginTop: "1.5rem" }}>
+            {rest.map((n) => (
+              <span key={n.slug} data-domain={n.domain}>
+                <span style={{ color: "var(--pen)" }}>— </span>
+                {n.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

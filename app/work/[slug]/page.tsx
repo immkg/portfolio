@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Marker from "@/components/Marker";
 import { caseSlugs, workCase, DOMAIN, KIND, num } from "@/lib/data";
 
 export function generateStaticParams() {
@@ -10,10 +9,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }): Promise<Metadata> {
   const { slug } = await params;
   const w = workCase(slug);
-  const first = w.claims[0]?.text ?? w.stories[0]?.situation ?? "";
   return {
     title: w.label,
-    description: `${DOMAIN[w.domain]}, ${w.first.slice(0, 4)}–${w.last.slice(0, 4)}. ${first}`.slice(0, 300),
+    description: w.line || `${DOMAIN[w.domain]}, ${w.first.slice(0, 4)}–${w.last.slice(0, 4)}.`,
     alternates: { canonical: `/work/${slug}/` },
   };
 }
@@ -29,26 +27,27 @@ const STAR: [string, string][] = [
 export default async function CasePage({ params }) {
   const { slug } = await params;
   const w = workCase(slug);
+  const claims = w.claims.slice(0, 3);
+  const story = w.stories[0];
+  const diagram = w.diagrams[0];
+  const more = w.stories.slice(1);
 
   return (
-    <main>
+    <main data-domain={w.domain}>
       <section className="band">
         <div className="sheet datum">
-          <p className="plot-row-meta">
-            <Link href="/work/">Work</Link> / {DOMAIN[w.domain]}
+          <p style={{ color: "var(--pen)", fontSize: "var(--step--1)" }}>
+            <Link href="/work/" style={{ color: "inherit" }}>Work</Link> / {DOMAIN[w.domain]}
           </p>
-          <h1 style={{ fontSize: "var(--step-3)", marginTop: "0.5rem" }}>
-            <Marker domain={w.domain} filled size={18} /> {w.label}
-          </h1>
-          <p className="lede">{KIND[w.kind]}.</p>
+          <h1 style={{ fontSize: "var(--step-3)", marginTop: "0.4rem" }}>{w.label}</h1>
+          <p className="lede" style={{ marginTop: "0.8rem" }}>{w.line}</p>
+
           <div
             className="readout"
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(8rem, 1fr))", marginTop: "2rem" }}
           >
             <div className="readout-cell">
-              <div className="readout-value">
-                {w.first.slice(0, 4)}–{w.last.slice(0, 4)}
-              </div>
+              <div className="readout-value">{w.first.slice(0, 4)}–{w.last.slice(0, 4)}</div>
               <div className="readout-label">on the record</div>
             </div>
             <div className="readout-cell">
@@ -64,71 +63,117 @@ export default async function CasePage({ params }) {
               <div className="readout-label">events mine</div>
             </div>
           </div>
-          {w.stack.length > 0 && (
-            <ul className="stack" style={{ marginTop: "1.5rem" }}>
-              {w.stack.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
-          )}
+          <p style={{ color: "var(--ink-3)", fontSize: "var(--step--1)", marginTop: "0.8rem" }}>
+            {KIND[w.kind]}
+          </p>
         </div>
       </section>
 
-      {w.claims.length > 0 && (
+      {claims.length > 0 && (
         <section className="band">
           <div className="sheet datum">
-            <h2>What it came to</h2>
-            <div className="plot-rows" style={{ marginTop: "1.5rem" }}>
-              {w.claims.map((c) => (
-                <div className="plot-row" key={c.id} style={{ gridTemplateColumns: "minmax(0,1fr) 10rem" }}>
-                  <p style={{ margin: 0, maxWidth: "62ch" }}>{c.text}</p>
-                  <span className="plot-row-meta">{c.metric ?? c.period}</span>
-                </div>
+            <h2>What came of it</h2>
+            <ul style={{ listStyle: "none", padding: 0, margin: "1.2rem 0 0" }}>
+              {claims.map((c) => (
+                <li
+                  key={c.id}
+                  style={{
+                    borderTop: "1px solid var(--rule)",
+                    padding: "0.9rem 0",
+                    maxWidth: "62ch",
+                  }}
+                >
+                  {c.text}
+                  {c.metric && (
+                    <div style={{ color: "var(--pen)", fontSize: "var(--step--1)", marginTop: "0.3rem" }}>
+                      {c.metric}
+                    </div>
+                  )}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
       )}
 
-      {w.stories.map((st) => (
-        <section className="band" key={st.id} id={st.id}>
+      {story && (
+        <section className="band">
           <div className="sheet datum">
-            <h2>{st.title}</h2>
-            <dl className="star" style={{ marginTop: "1.5rem" }}>
-              {STAR.map(([k, label]) => (
-                <div key={k}>
-                  <dt>{label}</dt>
-                  <dd style={{ margin: 0 }}>
-                    <p>{(st as any)[k]}</p>
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <h2>{story.title}</h2>
+            <p style={{ marginTop: "1rem" }}>{story.situation}</p>
+            <p>{story.result}</p>
+            <details className="long">
+              <summary>The whole story, step by step</summary>
+              <dl className="star">
+                {STAR.map(([k, label]) => (
+                  <div key={k}>
+                    <dt>{label}</dt>
+                    <dd style={{ margin: 0 }}>
+                      <p>{(story as any)[k]}</p>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
           </div>
         </section>
-      ))}
+      )}
 
-      {w.diagrams.length > 0 && (
+      {diagram && (
         <section className="band">
           <div className="sheet datum">
             <h2>How it was put together</h2>
-            <p className="lede">
-              {w.diagrams.length} diagrams, redrawn from the ones drawn at the time.
-              Internal service and repository names are replaced by what the part does.
-            </p>
-            {w.diagrams.map((d) => (
-              <figure key={d.slug} style={{ margin: "2rem 0 0" }}>
-                <figcaption className="plot-row-meta" style={{ marginBottom: "0.5rem" }}>
-                  {d.title}
-                </figcaption>
-                <div className="diagram">
-                  <pre>{d.mermaid}</pre>
-                </div>
-              </figure>
-            ))}
+            <figure style={{ margin: "1.2rem 0 0" }}>
+              <figcaption style={{ color: "var(--ink-3)", fontSize: "var(--step--1)", marginBottom: "0.5rem" }}>
+                {diagram.title}
+              </figcaption>
+              <div className="diagram">
+                <pre>{diagram.mermaid}</pre>
+              </div>
+            </figure>
+            {w.diagrams.length > 1 && (
+              <details className="long">
+                <summary>{w.diagrams.length - 1} more diagrams</summary>
+                {w.diagrams.slice(1).map((d) => (
+                  <figure key={d.slug} style={{ margin: "1.2rem 0 0" }}>
+                    <figcaption style={{ color: "var(--ink-3)", fontSize: "var(--step--1)", marginBottom: "0.5rem" }}>
+                      {d.title}
+                    </figcaption>
+                    <div className="diagram">
+                      <pre>{d.mermaid}</pre>
+                    </div>
+                  </figure>
+                ))}
+              </details>
+            )}
           </div>
         </section>
       )}
+
+      {more.length > 0 && (
+        <section className="band">
+          <div className="sheet datum">
+            <details className="long" style={{ borderTop: "none", marginTop: 0 }}>
+              <summary>{more.length} more stories from this one</summary>
+              {more.map((st) => (
+                <div key={st.id} style={{ marginTop: "1.5rem" }}>
+                  <h3>{st.title}</h3>
+                  <p style={{ marginTop: "0.5rem" }}>{st.situation}</p>
+                  <p>{st.result}</p>
+                </div>
+              ))}
+            </details>
+          </div>
+        </section>
+      )}
+
+      <section className="band">
+        <div className="sheet datum">
+          <p>
+            <Link href="/work/">Back to the work</Link>
+          </p>
+        </div>
+      </section>
     </main>
   );
 }

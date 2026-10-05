@@ -11,7 +11,7 @@ function read<T>(file: string): T {
 export type Node = {
   slug: string; label: string; domain: string; kind: string; tier: string;
   first: string; last: string; quarters: number; people: number;
-  mine: number; share: number; events: number; diagrams: number; case: boolean;
+  mine: number; share: number; events: number; diagrams: number; case: boolean; line: string;
   x: number; y: number; z: number; r: number;
   activity: { q: string; n: number }[];
 };
@@ -24,7 +24,7 @@ export type Constellation = {
 };
 
 export type Case = {
-  slug: string; label: string; domain: string; kind: string; tier: string;
+  slug: string; label: string; line: string; domain: string; kind: string; tier: string;
   first: string; last: string; quarters: number; people: number; mine: number;
   sources: string[]; stack: string[];
   claims: { id: string; text: string; period: string; metric: string | null;

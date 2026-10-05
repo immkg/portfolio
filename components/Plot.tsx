@@ -84,17 +84,19 @@ export default function Plot() {
         </g>
 
         {/* the markers */}
-        <g fill="none">
+        <g>
           {nodes.map((n) => {
             const cx = sx(n.x), cy = sy(n.y);
             const mark = (
               <g
-                stroke={n.case ? "var(--pen-2)" : "var(--pen-1)"}
-                opacity={n.case ? 1 : 0.42 + Math.min(0.45, n.share)}
+                data-domain={n.domain}
+                stroke="var(--pen)"
+                fill={n.case ? "var(--fill)" : "none"}
+                opacity={n.case ? 1 : 0.4 + Math.min(0.45, n.share)}
                 className="plot-mark"
               >
                 {glyph(n, cx, cy)}
-                {n.case && <circle cx={cx} cy={cy} r={0.9} fill="var(--pen-2)" stroke="none" />}
+                {n.case && <circle cx={cx} cy={cy} r={1.1} fill="var(--pen)" stroke="none" />}
                 <title>
                   {n.label} — {DOMAIN[n.domain]}, {n.first.slice(0, 4)}–{n.last.slice(0, 4)},{" "}
                   {n.people} people, {num(n.mine)} events mine
@@ -128,10 +130,9 @@ export default function Plot() {
         </g>
       </svg>
       <figcaption className="plot-row-meta" style={{ marginTop: "1.2rem", maxWidth: "62ch" }}>
-        Each marker is a project, placed by when it ran and what kind of problem it
-        was. Size is how much of its activity was mine; lines join projects that
-        shared people. The {nodes.filter((n) => n.case).length} in amber have a case
-        study behind them — follow one.
+        Each marker is a project, placed by when it ran and coloured by the kind of
+        problem it was. Size is how much of its activity was mine. The{" "}
+        {nodes.filter((n) => n.case).length} filled ones are written up below.
       </figcaption>
     </figure>
   );

@@ -6,12 +6,12 @@ export default function Marker({ domain, filled = false, size = 11 }:
   { domain: string; filled?: boolean; size?: number }) {
   const s = size;
   const h = s / 2;
-  const stroke = "var(--pen-1)";
-  const fill = filled ? "var(--pen-2)" : "none";
+  const stroke = "var(--pen, currentColor)";
+  const fill = filled ? "var(--fill, none)" : "none";
   const shape = GLYPH[domain] ?? "circle";
   const common = { stroke, strokeWidth: 1.2, fill, vectorEffect: "non-scaling-stroke" as const };
   return (
-    <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} aria-hidden="true" style={{ overflow: "visible" }}>
+    <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} aria-hidden="true" data-domain={domain} style={{ overflow: "visible", flex: "none" }}>
       {shape === "circle" && <circle cx={h} cy={h} r={h - 1} {...common} />}
       {shape === "square" && <rect x={1} y={1} width={s - 2} height={s - 2} {...common} />}
       {shape === "triangle" && <polygon points={`${h},1 ${s - 1},${s - 1} 1,${s - 1}`} {...common} />}

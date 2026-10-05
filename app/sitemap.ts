@@ -6,7 +6,7 @@ const BASE = "https://immkg.github.io/portfolio";
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const pages = ["", "/journey", "/work", "/stats", "/craft", "/about"];
+  const pages = ["", "/journey", "/work", "/about"];
   const cases = caseSlugs().map((s) => `/work/${s}`);
   return [...pages, ...cases].map((p) => ({
     url: `${BASE}${p}/`,
