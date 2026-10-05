@@ -1,70 +1,49 @@
-# Portfolio Website
+# Portfolio
 
-A dynamic React-based portfolio website featuring:
+Seven years of engineering, plotted — [immkg.github.io/portfolio](https://immkg.github.io/portfolio)
 
-- Dark/Light mode toggle
-- Smooth scroll navigation
-- JSON-driven dynamic generation
-- ATS-friendly resume format
-- Contact section with QR code
+Not a CV page. The site is generated from a private record of the work itself
+(tickets, commits, reviews, chat and documents, attributed per project and per
+person) and published through a redaction gate that refuses to ship anything
+still carrying a client's name.
 
-Live at: [https://immkg.github.io/portfolio](https://immkg.github.io/portfolio)
-
-![](docs/web.png)
-
-## Setup for Development
-
-To set up the project for development, follow these steps:
-
-1. Clone the repository & navigate to the project directory:
-
-   ```
-   git clone https://github.com/immkg/portfolio.git; cd portfolio
-   ```
-
-2. Install dependencies & Start the development server:
-
-   ```
-   npm install; npm start
-   ```
-
-The project will be running at `http://localhost:3000` and will automatically reload when you make changes.
-
-## Updating Your Data
-
-Ensure the JSON files in `src/data` are updated with your information. After updating them, in `src` run the following command:
+## How it fits together
 
 ```
-node generate-resume.js
+../assistance/relaunch/            private record — never published
+  profiles/_kt/                      84 project cards, claims, stories, diagrams
+  profiles/mayank/portfolio/labels.json  curated label + redaction map
+  scripts/export_portfolio.py        builds the public dataset
+  scripts/verify_portfolio.py        scans a built site for anything withheld
+
+public/data/constellation.json     77 plotted projects, positions and metrics
+public/data/{stats,journey}.json   the numbers and the four eras
+content/work/<slug>.json           the 9 written-up case studies
+app/                               Next.js App Router, static export
 ```
 
-This will generate `resume.pdf` in the `public` folder.
+## Running it
 
-## Deploying to GitHub Pages
+```
+nvm use                 # Node 22.23.2, pinned in .nvmrc
+npm install
+npm run data            # re-export from the private record
+npm run dev
+npm run build           # static export to out/
+```
 
-To deploy your project to GitHub Pages, follow these steps:
+After a build, before publishing:
 
-1. Add the following properties to your `package.json`:
+```
+python3 ../assistance/relaunch/scripts/verify_portfolio.py out
+```
 
-   ```json
-   "homepage": "https://immkg.github.io/portfolio",
-   ```
+That scan is the gate. It exits non-zero if any withheld client name, internal
+repository name or personal contact detail reached the built HTML.
 
-2. Deploy the project:
-   ```
-   npm run deploy
-   ```
+## Disclosure
 
-Your project will be available at `https://immkg.github.io/portfolio`.
-
-## Security
-
-Refer [SECURITY](./SECURITY.md) for details
-
-## Contributing
-
-Refer [CONTRIBUTING](./CONTRIBUTING.md) for details
-
-## License
-
-This project is licensed under the MIT License. [View License](./LICENSE).
+Products the company owned are named. Client names and client-owned product
+names are replaced by what the client does ("a regulatory medical-writing
+platform"). Architecture diagrams are redrawn with internal service and
+repository names replaced by the part's function. Figures are rounded down.
