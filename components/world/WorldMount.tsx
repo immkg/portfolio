@@ -11,6 +11,7 @@ const World = dynamic(() => import("./World"), { ssr: false });
  *  page, so refusing to mount costs nothing. */
 export default function WorldMount(props: { landmarks: Landmark[]; specks: Speck[] }) {
   const [go, setGo] = useState(false);
+  const [motion, setMotion] = useState<"full" | "static">("full");
   const [why, setWhy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,10 +24,15 @@ export default function WorldMount(props: { landmarks: Landmark[]; specks: Speck
         return false;
       }
     })();
-    if (reduce) setWhy("You have asked for reduced motion, so the world stays still.");
+    if (!gl) setWhy("This browser cannot run the world.");
     else if (saveData) setWhy("You are on a data saver, so the world has not loaded.");
-    else if (!gl) setWhy("This browser cannot run the world.");
-    else setGo(true);
+    else {
+      // Reduced motion gets the same world with the movement snapped rather
+      // than eased, not a refusal. W3C asks for non-essential animation to be
+      // disableable, not for the content to be withheld.
+      if (reduce) setMotion("static");
+      setGo(true);
+    }
   }, []);
 
   if (why) {
@@ -40,5 +46,5 @@ export default function WorldMount(props: { landmarks: Landmark[]; specks: Speck
     );
   }
   if (!go) return <div className="world-decline" aria-hidden="true" />;
-  return <World {...props} />;
+  return <World {...props} motion={motion} />;
 }

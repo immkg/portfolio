@@ -166,9 +166,11 @@ function Specks({ specks }: { specks: Speck[] }) {
 function Visitor({
   target,
   onPos,
+  motion,
 }: {
   target: React.MutableRefObject<THREE.Vector3 | null>;
   onPos: (v: THREE.Vector3) => void;
+  motion: "full" | "static";
 }) {
   const body = useRef<THREE.Group>(null);
   const { camera } = useThree();
@@ -208,7 +210,8 @@ function Visitor({
       else step.copy(to.normalize().multiplyScalar(15));
     }
 
-    vel.current.lerp(step, Math.min(1, dt * 7));
+    if (motion === "static") vel.current.copy(step);
+    else vel.current.lerp(step, Math.min(1, dt * 7));
     pos.current.addScaledVector(vel.current, dt);
     pos.current.x = THREE.MathUtils.clamp(pos.current.x, -95, 95);
     pos.current.z = THREE.MathUtils.clamp(pos.current.z, -95, 95);
@@ -216,13 +219,15 @@ function Visitor({
     if (body.current) {
       body.current.position.copy(pos.current);
       const speed = vel.current.length();
-      body.current.position.y = Math.abs(Math.sin(performance.now() / 110)) * speed * 0.016;
+      body.current.position.y =
+        motion === "static" ? 0 : Math.abs(Math.sin(performance.now() / 110)) * speed * 0.016;
       if (speed > 0.4)
         body.current.rotation.y = Math.atan2(vel.current.x, vel.current.z);
     }
 
     const want = new THREE.Vector3(pos.current.x + 30, 38, pos.current.z + 44);
-    camera.position.lerp(want, Math.min(1, dt * 2.6));
+    if (motion === "static") camera.position.copy(want);
+    else camera.position.lerp(want, Math.min(1, dt * 2.6));
     camera.lookAt(pos.current.x, 2.2, pos.current.z);
 
     onPos(pos.current);
@@ -257,10 +262,12 @@ function Scene({
   landmarks,
   specks,
   onNear,
+  motion,
 }: {
   landmarks: Landmark[];
   specks: Speck[];
   onNear: (lm: Landmark | null) => void;
+  motion: "full" | "static";
 }) {
   const target = useRef<THREE.Vector3 | null>(null);
   const [nearSlug, setNearSlug] = useState<string | null>(null);
@@ -299,7 +306,7 @@ function Scene({
       {landmarks.map((lm, i) => (
         <Building key={lm.slug} lm={lm} pos={spots[i]} near={nearSlug === lm.slug} />
       ))}
-      <Visitor target={target} onPos={check} />
+      <Visitor target={target} onPos={check} motion={motion} />
     </>
   );
 }
@@ -309,9 +316,11 @@ function Scene({
 export default function World({
   landmarks,
   specks,
+  motion = "full",
 }: {
   landmarks: Landmark[];
   specks: Speck[];
+  motion?: "full" | "static";
 }) {
   const [near, setNear] = useState<Landmark | null>(null);
   const [dpr, setDpr] = useState(1.25);
@@ -326,7 +335,7 @@ export default function World({
         <PerformanceMonitor onDecline={() => setDpr(1)} />
         <AdaptiveDpr pixelated />
         <Suspense fallback={null}>
-          <Scene landmarks={landmarks} specks={specks} onNear={setNear} />
+          <Scene landmarks={landmarks} specks={specks} onNear={setNear} motion={motion} />
         </Suspense>
       </Canvas>
 
