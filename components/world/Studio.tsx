@@ -155,6 +155,7 @@ function Room() {
 /* ---------------- camera that composes a view of what you picked ---------------- */
 
 const HOME = new THREE.Vector3(15, 12.5, 19);
+const HOME_NARROW = new THREE.Vector3(22, 18, 28);
 
 function Director({ target }: { target: Thing | null }) {
   const { camera } = useThree();
@@ -172,7 +173,7 @@ function Director({ target }: { target: Thing | null }) {
       camera.position.lerp(want, k);
       look.current.lerp(p, k);
     } else {
-      camera.position.lerp(HOME, k);
+      camera.position.lerp(window.innerWidth < 720 ? HOME_NARROW : HOME, k);
       look.current.lerp(new THREE.Vector3(0, 2.2, 0), k);
     }
     camera.lookAt(look.current);
@@ -185,6 +186,10 @@ function Director({ target }: { target: Thing | null }) {
 export default function Studio({ things }: { things: Thing[] }) {
   const [picked, setPicked] = useState<Thing | null>(null);
   const [dpr, setDpr] = useState(1.25);
+  const [help, setHelp] = useState("Click anything in the room");
+  useEffect(() => {
+    if (window.matchMedia("(pointer: coarse)").matches) setHelp("Tap anything in the room");
+  }, []);
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setPicked(null);
@@ -215,7 +220,7 @@ export default function Studio({ things }: { things: Thing[] }) {
       </Canvas>
 
       <a className="world-leave" href="/portfolio/about/">Read it as a page</a>
-      <div className="world-help">Click anything in the room</div>
+      <div className="world-help">{help}</div>
 
       {picked && (
         <div className="world-card" data-domain="document-ai">

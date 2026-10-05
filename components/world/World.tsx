@@ -120,7 +120,7 @@ function Building({ lm, pos, near }: { lm: Landmark; pos: [number, number]; near
         {/* the facade itself, standing on the plinth */}
         <Cutout src={FACADE[lm.slug] ?? "facade-more-work"} width={9} position={[0, 1.1, 0]} anchor="bottom" />
         {/* the district's emblem above it */}
-        <Cutout src={EMBLEM[lm.domain]} width={2.2} position={[0, top + 1.6, 0]} billboard />
+        <Cutout src={EMBLEM[lm.domain]} width={1.7} position={[0, top + 1.4, 0]} billboard />
         {/* plinth, in the district's own pen, so colour reads from far off */}
         <mesh position={[0, 0.55, 0]}>
           <boxGeometry args={[9.4, 1.1, 3]} />
@@ -242,7 +242,11 @@ function Visitor({
       }
     }
 
-    const want = new THREE.Vector3(pos.current.x + 30, 38, pos.current.z + 44);
+    // a phone sees a much narrower slice, so stand further off
+    const far = window.innerWidth < 720 ? 1.55 : 1;
+    const want = new THREE.Vector3(
+      pos.current.x + 30 * far, 38 * far, pos.current.z + 44 * far
+    );
     if (motion === "static") camera.position.copy(want);
     else camera.position.lerp(want, Math.min(1, dt * 2.6));
     camera.lookAt(pos.current.x, 2.2, pos.current.z);
@@ -331,6 +335,11 @@ export default function World({
 }) {
   const [near, setNear] = useState<Landmark | null>(null);
   const [dpr, setDpr] = useState(1.25);
+  const [help, setHelp] = useState("Tap the ground to walk");
+  useEffect(() => {
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    setHelp(touch ? "Tap the ground to walk there" : "Click the ground to walk · arrow keys or W A S D");
+  }, []);
 
   return (
     <div className="world">
@@ -347,9 +356,7 @@ export default function World({
       </Canvas>
 
       <a className="world-leave" href="/portfolio/work/">Read it as pages</a>
-      <div className="world-help">
-        Tap the ground to walk · arrow keys or W A S D
-      </div>
+      <div className="world-help">{help}</div>
 
       {near && (
         <div className="world-card" data-domain={near.domain}>

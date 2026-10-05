@@ -315,3 +315,19 @@ body:has(.world)::before { display: none; }
 .studio-tag.is-blank { border-style: dashed; color: var(--ink-3); }
 .studio-blank { color: var(--ink-3); font-style: italic; }
 button.world-enter { background: none; font: inherit; cursor: pointer; }
+
+/* A landmark sign must never run off the side of a phone. */
+.world-sign {
+  max-width: min(60vw, 18rem);
+  white-space: normal;
+  text-wrap: balance;
+}
+@media (max-width: 720px) {
+  .world-sign { max-width: 60vw; min-width: 9rem; font-size: 0.78rem; padding: 0.25rem 0.5rem; }
+  .world-sign b { font-size: 0.82rem; }
+  .world-sign span { font-size: 0.68rem; }
+}
+
+@media (max-width: 720px) {
+  .studio-tag { max-width: 44vw; white-space: normal; font-size: 0.74rem; }
+}
