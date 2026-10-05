@@ -2,8 +2,9 @@
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, AdaptiveDpr, PerformanceMonitor } from "@react-three/drei";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import Cutout from "./Cutout";
 
 const PAL: Record<string, string> = {
   doc: "#5a62e8", conv: "#12a98a", search: "#e0557f", saas: "#d8871a",
@@ -17,7 +18,7 @@ const SOFT: Record<string, string> = {
 };
 
 export type Thing = {
-  id: string; label: string; group: string;
+  id: string; label: string; group: string; tex?: string;
   pos: [number, number, number]; size: [number, number, number];
   shape: string; color: string; fact: string | null;
 };
@@ -75,7 +76,10 @@ function Thing3D({
       onPointerOut={() => { setHover(false); document.body.style.cursor = ""; }}
       onClick={(e) => { e.stopPropagation(); onPick(t); }}
     >
-      {stack ? (
+      {t.tex ? (
+        // a drawn object stands on its own footprint, facing into the room
+        <Cutout src={t.tex} width={Math.max(t.size[0], 0.9) * 1.5} position={[0, -t.size[1] / 2, 0]} anchor="bottom" billboard />
+      ) : stack ? (
         // a stack or heap is several slabs, which reads better than one box
         [0, 1, 2, 3].map((i) => (
           <Paper
@@ -199,10 +203,14 @@ export default function Studio({ things }: { things: Thing[] }) {
         <PerformanceMonitor onDecline={() => setDpr(1)} />
         <AdaptiveDpr pixelated />
         <color attach="background" args={["#f4f7fd"]} />
+        {/* the drawn objects suspend while their art loads; the room should
+            not vanish, and neither should the page chrome around it */}
         <Room />
-        {things.map((t) => (
-          <Thing3D key={t.id} t={t} active={picked?.id === t.id} onPick={setPicked} />
-        ))}
+        <Suspense fallback={null}>
+          {things.map((t) => (
+            <Thing3D key={t.id} t={t} active={picked?.id === t.id} onPick={setPicked} />
+          ))}
+        </Suspense>
         <Director target={picked} />
       </Canvas>
 

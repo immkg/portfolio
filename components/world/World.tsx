@@ -3,6 +3,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, AdaptiveDpr, PerformanceMonitor } from "@react-three/drei";
 import { useMemo, useRef, useState, useEffect, Suspense } from "react";
+import Cutout from "./Cutout";
 import * as THREE from "three";
 
 const PEN: Record<string, string> = {
@@ -22,6 +23,32 @@ const FILL: Record<string, string> = {
   "data-crawling": "#d2e9fa",
   "automation": "#ecd9f7",
   "platform-internal": "#dfecc9",
+};
+
+export const FACADE: Record<string, string> = {
+  "regulatory-medical-writing": "facade-document",
+  "hybrid-chat": "facade-conversation",
+  "omnichannel-inbox": "facade-inbox",
+  talkingdb: "facade-questions",
+  "kray-search-platform": "facade-search",
+  "more-work": "facade-more-work",
+  "internal-platform": "facade-platform",
+};
+/** Five facades are drawn tall, two wide. The emblem and the sign have to sit
+ *  above whichever it is, so the height is declared rather than guessed. */
+export const FACADE_TOP: Record<string, number> = {
+  "regulatory-medical-writing": 19.5, "hybrid-chat": 19.5, "omnichannel-inbox": 19.5,
+  talkingdb: 19.5, "kray-search-platform": 19.5,
+  "more-work": 6.2, "internal-platform": 6.2,
+};
+export const EMBLEM: Record<string, string> = {
+  "document-ai": "emblem-inspect",
+  "conversational-ai": "emblem-listen",
+  "search-commerce": "emblem-search",
+  "product-saas": "emblem-walk",
+  "data-crawling": "emblem-connect",
+  automation: "emblem-simulate",
+  "platform-internal": "emblem-build",
 };
 
 export type Landmark = {
@@ -81,7 +108,7 @@ function Pad({ x, z, domain, r }: { x: number; z: number; domain: string; r: num
 
 function Building({ lm, pos, near }: { lm: Landmark; pos: [number, number]; near: boolean }) {
   const ref = useRef<THREE.Group>(null);
-  const h = 6 + (lm.count ? 2 : lm.people / 14);
+  const top = FACADE_TOP[lm.slug] ?? 10;
   useFrame((state) => {
     if (!ref.current) return;
     const t = state.clock.elapsedTime;
@@ -90,36 +117,17 @@ function Building({ lm, pos, near }: { lm: Landmark; pos: [number, number]; near
   return (
     <group position={[pos[0], 0, pos[1]]}>
       <group ref={ref}>
-        {/* façade slab — the ChatGPT texture will map onto this face */}
-        <mesh position={[0, h / 2, 0]} castShadow={false}>
-          <boxGeometry args={[5.2, h, 5.2]} />
-          <meshBasicMaterial color={FILL[lm.domain]} />
-        </mesh>
-        <mesh position={[0, h / 2, 2.62]}>
-          <planeGeometry args={[5.2, h]} />
-          <meshBasicMaterial color={FILL[lm.domain]} />
-        </mesh>
+        {/* the facade itself, standing on the plinth */}
+        <Cutout src={FACADE[lm.slug] ?? "facade-more-work"} width={9} position={[0, 1.1, 0]} anchor="bottom" />
+        {/* the district's emblem above it */}
+        <Cutout src={EMBLEM[lm.domain]} width={2.2} position={[0, top + 1.6, 0]} billboard />
         {/* plinth, in the district's own pen, so colour reads from far off */}
         <mesh position={[0, 0.55, 0]}>
-          <boxGeometry args={[6, 1.1, 6]} />
+          <boxGeometry args={[9.4, 1.1, 3]} />
           <meshBasicMaterial color={PEN[lm.domain]} />
         </mesh>
-        {/* roof pennant */}
-        <mesh position={[1.6, h + 1.1, 0]}>
-          <planeGeometry args={[1.8, 1.1]} />
-          <meshBasicMaterial color={PEN[lm.domain]} side={THREE.DoubleSide} />
-        </mesh>
-        <mesh position={[1.6, h + 0.6, 0]}>
-          <boxGeometry args={[0.08, 2.2, 0.08]} />
-          <meshBasicMaterial color="#1b2437" />
-        </mesh>
-        {/* edge outline, the cut-paper look */}
-        <lineSegments position={[0, h / 2, 0]}>
-          <edgesGeometry args={[new THREE.BoxGeometry(5.2, h, 5.2)]} />
-          <lineBasicMaterial color="#1b2437" />
-        </lineSegments>
       </group>
-      <Html position={[0, h + 2.4, 0]} center distanceFactor={13} zIndexRange={[20, 0]}>
+      <Html position={[0, top + 4.2, 0]} center distanceFactor={16} zIndexRange={[20, 0]}>
         <div className={`world-sign${near ? " is-near" : ""}`} data-domain={lm.domain}>
           <b>{lm.label}</b>
           <span>
@@ -177,6 +185,8 @@ function Visitor({
   const keys = useRef<Record<string, boolean>>({});
   const pos = useRef(new THREE.Vector3(0, 0, 10));
   const vel = useRef(new THREE.Vector3());
+  const faceRef = useRef("front");
+  const [face, setFace] = useState("front");
 
   useEffect(() => {
     const d = (e: KeyboardEvent) => {
@@ -221,8 +231,15 @@ function Visitor({
       const speed = vel.current.length();
       body.current.position.y =
         motion === "static" ? 0 : Math.abs(Math.sin(performance.now() / 110)) * speed * 0.016;
-      if (speed > 0.4)
-        body.current.rotation.y = Math.atan2(vel.current.x, vel.current.z);
+      if (speed > 0.4) {
+        const a = Math.atan2(vel.current.x, vel.current.z);
+        const next =
+          a > 2.0 || a < -2.0 ? "back" : a > 0.6 ? "right" : a < -0.6 ? "left" : "front";
+        if (next !== faceRef.current) {
+          faceRef.current = next;
+          setFace(next);
+        }
+      }
     }
 
     const want = new THREE.Vector3(pos.current.x + 30, 38, pos.current.z + 44);
@@ -235,18 +252,8 @@ function Visitor({
 
   return (
     <group ref={body}>
-      <mesh position={[0, 1.45, 0]}>
-        <capsuleGeometry args={[0.68, 1.5, 4, 12]} />
-        <meshBasicMaterial color="#5a62e8" />
-      </mesh>
-      <mesh position={[0, 2.95, 0]}>
-        <sphereGeometry args={[0.66, 16, 12]} />
-        <meshBasicMaterial color="#f6e3d4" />
-      </mesh>
-      <lineSegments position={[0, 1.1, 0]}>
-        <edgesGeometry args={[new THREE.CapsuleGeometry(0.52, 1.1, 2, 8)]} />
-        <lineBasicMaterial color="#1b2437" />
-      </lineSegments>
+      {/* four drawn views, swapped by heading */}
+      <Cutout src={`walker-${face}`} width={2.6} position={[0, 0, 0]} anchor="bottom" billboard />
       {/* the shadow is a disc, because paper dolls do not cast real ones */}
       <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.95, 20]} />

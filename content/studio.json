@@ -15,7 +15,8 @@
   ],
   "shape": "box",
   "color": "doc",
-  "fact": "Most of what I do happens here: a question becomes a parse tree, gets resolved against a graph store, and comes back as an answer you can explain."
+  "fact": "Most of what I do happens here: a question becomes a parse tree, gets resolved against a graph store, and comes back as an answer you can explain.",
+  "tex": "monitor"
  },
  {
   "id": "keyboard",
@@ -33,7 +34,8 @@
   ],
   "shape": "box",
   "color": "ink",
-  "fact": "9,800+ commits across 400+ repositories, made while running the engineering function rather than instead of it."
+  "fact": "9,800+ commits across 400+ repositories, made while running the engineering function rather than instead of it.",
+  "tex": "laptop"
  },
  {
   "id": "mug",
@@ -51,7 +53,8 @@
   ],
   "shape": "cyl",
   "color": "search",
-  "fact": null
+  "fact": null,
+  "tex": "mug"
  },
  {
   "id": "notebook",
@@ -69,7 +72,8 @@
   ],
   "shape": "box",
   "color": "paper",
-  "fact": "Decision records next to the code, kept honest. I enjoy this more than I probably should."
+  "fact": "Decision records next to the code, kept honest. I enjoy this more than I probably should.",
+  "tex": "notebook"
  },
  {
   "id": "headphones",
@@ -87,7 +91,8 @@
   ],
   "shape": "torus",
   "color": "ink",
-  "fact": null
+  "fact": null,
+  "tex": "headphones"
  },
  {
   "id": "plant",
@@ -105,7 +110,8 @@
   ],
   "shape": "plant",
   "color": "plat",
-  "fact": null
+  "fact": null,
+  "tex": "plant"
  },
  {
   "id": "desk",
@@ -141,7 +147,8 @@
   ],
   "shape": "books",
   "color": "crawl",
-  "fact": null
+  "fact": null,
+  "tex": "books"
  },
  {
   "id": "books-fiction",
@@ -159,7 +166,8 @@
   ],
   "shape": "books",
   "color": "auto",
-  "fact": null
+  "fact": null,
+  "tex": "books"
  },
  {
   "id": "screen-small",
@@ -177,7 +185,8 @@
   ],
   "shape": "box",
   "color": "ink",
-  "fact": null
+  "fact": null,
+  "tex": "picture"
  },
  {
   "id": "pc-case",
@@ -213,7 +222,8 @@
   ],
   "shape": "heap",
   "color": "crawl",
-  "fact": "I collect hardware. Keyboards, parts, machines. More than is reasonable."
+  "fact": "I collect hardware. Keyboards, parts, machines. More than is reasonable.",
+  "tex": "rock"
  },
  {
   "id": "breadboard",
@@ -231,7 +241,8 @@
   ],
   "shape": "box",
   "color": "paper",
-  "fact": "Arduino and Pi work: the shortest line between the mechanical degree and everything since."
+  "fact": "Arduino and Pi work: the shortest line between the mechanical degree and everything since.",
+  "tex": "notebook"
  },
  {
   "id": "tools",
@@ -249,7 +260,8 @@
   ],
   "shape": "box",
   "color": "ink",
-  "fact": null
+  "fact": null,
+  "tex": "lamp-desk"
  },
  {
   "id": "kit",
@@ -267,7 +279,8 @@
   ],
   "shape": "box",
   "color": "auto",
-  "fact": null
+  "fact": null,
+  "tex": "bench"
  },
  {
   "id": "bike",
@@ -303,7 +316,8 @@
   ],
   "shape": "box",
   "color": "saas",
-  "fact": null
+  "fact": null,
+  "tex": "planter"
  },
  {
   "id": "wall-origin",
@@ -321,7 +335,8 @@
   ],
   "shape": "plane",
   "color": "crawl",
-  "fact": "I did a mechanical engineering degree and never stopped doing software. There was no switch. Composites at one lab, additive manufacturing at another, a numerical model with a GUI written in New Zealand, and code running alongside the whole time."
+  "fact": "I did a mechanical engineering degree and never stopped doing software. There was no switch. Composites at one lab, additive manufacturing at another, a numerical model with a GUI written in New Zealand, and code running alongside the whole time.",
+  "tex": "picture"
  },
  {
   "id": "wall-opinions",
@@ -339,7 +354,8 @@
   ],
   "shape": "plane",
   "color": "auto",
-  "fact": "Structure over similarity.\nPlatforms, not apps.\nWrite the architecture down.\nI thought the hard part was the technology."
+  "fact": "Structure over similarity.\nPlatforms, not apps.\nWrite the architecture down.\nI thought the hard part was the technology.",
+  "tex": "pinboard"
  },
  {
   "id": "wall-facts",
@@ -357,7 +373,8 @@
   ],
   "shape": "plane",
   "color": "search",
-  "fact": null
+  "fact": null,
+  "tex": "shelf"
  },
  {
   "id": "lab-door",
