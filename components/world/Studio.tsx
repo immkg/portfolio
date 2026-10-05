@@ -41,6 +41,17 @@ function Paper({ geo, color, position, rotation }: any) {
   );
 }
 
+/** Which way a drawn object is turned when it is sitting still. */
+const VIEW_ANGLE = Math.atan2(15, 19); // toward the room's default camera
+
+function facing(t: Thing): [number, number, number] {
+  if (t.pos[2] < -3) return [0, 0, 0];              // flat on the back wall
+  if (t.pos[0] < -6) return [0, Math.PI / 2, 0];     // flat on the left wall
+  if (t.pos[0] > 5) return [0, -Math.PI / 2, 0];     // flat on the open right edge
+  return [0, VIEW_ANGLE, 0];                         // turned toward the viewer
+}
+
+
 function shapeGeometry(t: Thing): THREE.BufferGeometry {
   const [w, h, d] = t.size;
   switch (t.shape) {
@@ -77,8 +88,19 @@ function Thing3D({
       onClick={(e) => { e.stopPropagation(); onPick(t); }}
     >
       {t.tex ? (
-        // a drawn object stands on its own footprint, facing into the room
-        <Cutout src={t.tex} width={Math.max(t.size[0], 0.9) * 1.5} position={[0, -t.size[1] / 2, 0]} anchor="bottom" billboard />
+        // A drawn object is a flat plane, not a billboard, so it cannot swing
+        // round and cut through a wall. Anything close to the back or left
+        // wall lies flat against it; everything else is turned to face the
+        // room's default viewpoint. While it is being inspected it becomes a
+        // billboard, so it turns to face you as you look at it.
+        <Cutout
+          src={t.tex}
+          width={Math.max(t.size[0], 0.9) * 1.5}
+          position={[0, -t.size[1] / 2, 0]}
+          anchor="bottom"
+          billboard={active}
+          rotation={facing(t)}
+        />
       ) : stack ? (
         // a stack or heap is several slabs, which reads better than one box
         [0, 1, 2, 3].map((i) => (
@@ -163,15 +185,20 @@ function Director({ target }: { target: Thing | null }) {
   useFrame((_, dt) => {
     const k = Math.min(1, dt * 2.4);
     if (target) {
-      const p = new THREE.Vector3(...target.pos);
-      // stand off along the line from the room centre, so the object is never
-      // viewed through a wall
-      const dir = p.clone().sub(new THREE.Vector3(0, 2, 0)).normalize();
-      const reach = Math.max(2.6, Math.max(...target.size) * 2.4);
-      const want = p.clone().add(dir.multiplyScalar(reach)).add(new THREE.Vector3(0, 1.6, 0));
-      want.y = Math.max(want.y, 2.4);
+      // Compose on the middle of the object, not its feet, and stand back far
+      // enough that it reads. Approaching along the line out from the room
+      // centre keeps a wall from ever coming between you and it.
+      const drawn = !!target.tex;
+      const tall = drawn ? Math.max(target.size[0], 0.9) * 1.5 : target.size[1];
+      const centre = new THREE.Vector3(
+        target.pos[0], target.pos[1] + tall * 0.35 + 0.4, target.pos[2]
+      );
+      const dir = centre.clone().sub(new THREE.Vector3(0, 2, 0)).normalize();
+      const reach = Math.max(4.5, tall * 3.2);
+      const want = centre.clone().add(dir.multiplyScalar(reach));
+      want.y = Math.max(want.y + 1.2, centre.y + 1.4);
       camera.position.lerp(want, k);
-      look.current.lerp(p, k);
+      look.current.lerp(centre, k);
     } else {
       camera.position.lerp(window.innerWidth < 720 ? HOME_NARROW : HOME, k);
       look.current.lerp(new THREE.Vector3(0, 2.2, 0), k);
