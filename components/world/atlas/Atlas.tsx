@@ -7,6 +7,7 @@ import * as THREE from "three";
 import Scene, { type Shared } from "./Scene";
 import Panel from "./Panel";
 import Minimap from "./Minimap";
+import { BUILTIN_ALIASES, buildAliases, smartHit } from "@/lib/smartMatch";
 import {
   type WorldData, type Pick, ROOT, ICON, PEN, FAMILY_INK, dateAt, districtAt,
   districtSpot, skillSpots, plinth, span,
@@ -112,26 +113,29 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     else if (kind === "reach" || kind === "about") onPick({ kind } as Pick);
   }, [w, onPick]);
 
+  /* the same forgiving search as the text pages: acronyms (adr, k8s), synonyms,
+     typos, and each skill's other names. Skills first, best match first. */
+  const aliases = useMemo(() => (w ? buildAliases({ skills: w.skills }) : {}), [w]);
   const hits = useMemo<Hit[]>(() => {
     if (!w || q.trim().length < 2) return [];
-    const t = q.trim().toLowerCase();
-    const out: Hit[] = [];
-    w.projects.forEach((p) => {
-      if ((p.label + " " + p.line + " " + p.skills.join(" ")).toLowerCase().includes(t))
-        out.push({ pick: { kind: "project", slug: p.slug }, label: p.label, sub: `Project · ${span(p)}`,
-                   icon: `project-${p.slug}`, pen: PEN[p.domain] });
-    });
-    w.skills.forEach((s) => {
-      if (s.name.toLowerCase().includes(t))
-        out.unshift({ pick: { kind: "skill", slug: s.slug }, label: s.name, sub: `Skill · ${s.projects.length} projects`,
-                      icon: s.icon, pen: FAMILY_INK[s.family] });
-    });
-    w.stories.forEach((s) => {
-      if ((s.title + " " + s.s + " " + s.a).toLowerCase().includes(t))
-        out.push({ pick: { kind: "story", id: s.id }, label: s.title, sub: "Story", icon: `story-${s.id}`, pen: "#1b2437" });
-    });
-    return out.slice(0, 9);
-  }, [w, q]);
+    const nq = q.trim().toLowerCase();
+    const rank = (label: string) => (label.toLowerCase().startsWith(nq) ? 0 : label.toLowerCase().includes(nq) ? 1 : 2);
+    const skills = w.skills
+      .filter((s) => smartHit(q, [s.name, s.group, s.line], aliases, s.aliases))
+      .sort((a, b) => rank(a.name) - rank(b.name))
+      .map<Hit>((s) => ({ pick: { kind: "skill", slug: s.slug }, label: s.name, sub: `Skill · ${s.projects.length} projects`,
+                          icon: s.icon, pen: FAMILY_INK[s.family] }));
+    const projects = w.projects
+      .filter((p) => smartHit(q, [p.label, p.line, ...p.did, ...p.skills], BUILTIN_ALIASES))
+      .sort((a, b) => rank(a.label) - rank(b.label) || b.tier - a.tier)
+      .map<Hit>((p) => ({ pick: { kind: "project", slug: p.slug }, label: p.label, sub: `Project · ${span(p)}`,
+                          icon: `project-${p.slug}`, pen: PEN[p.domain] }));
+    const stories = w.stories
+      .filter((s) => smartHit(q, [s.title, s.s, s.t, s.a, s.r], BUILTIN_ALIASES))
+      .map<Hit>((s) => ({ pick: { kind: "story", id: s.id }, label: s.title, sub: "Story", icon: `story-${s.id}`, pen: "#1b2437" }));
+    // a few of each kind, so one kind never crowds the others out
+    return [...skills.slice(0, 4), ...projects.slice(0, 5), ...stories.slice(0, 3)];
+  }, [w, q, aliases]);
 
   if (!w) return <div className="world-decline">Unfolding the map…</div>;
   const dLabel = where.district && w.domains.find((d) => d.id === where.district)?.label;
