@@ -491,3 +491,10 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
   .atlas .world-help { display: none; }
   .atlas-panel { top: auto; left: 0.5rem; right: 0.5rem; bottom: 0.5rem; width: auto; height: 62vh; }
 }
+
+.atlas-star { margin: 0.8rem 0 1rem; }
+.atlas-star div { display: grid; grid-template-columns: 5.2rem 1fr; gap: 0.6rem; padding: 0.45rem 0; border-top: 1px solid var(--rule); }
+.atlas-star dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--pen, var(--ink-3)); padding-top: 0.2rem; font-weight: 600; }
+.atlas-star dd { margin: 0; font-size: 0.92rem; }
+.atlas-links { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.atlas-links a { border: 1px solid var(--ink); border-radius: 999px; padding: 0.2rem 0.8rem; text-decoration: none; font-size: 0.85rem; }

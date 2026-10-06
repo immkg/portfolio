@@ -28,7 +28,13 @@ export type Shared = {
   target: React.MutableRefObject<THREE.Vector3 | null>;
   /** camera distance multiplier: 1 is street level, 3 is high ground */
   far: React.MutableRefObject<number>;
+  /** camera heading round the visitor, and its tilt above the ground */
+  yaw: React.MutableRefObject<number>;
+  pitch: React.MutableRefObject<number>;
 };
+
+/* A drag turns the world; only a press that barely moved counts as a click. */
+const tap = (e: ThreeEvent<MouseEvent>) => e.delta <= 6;
 
 /* Signs drawn with <Html> live inside the canvas's own element, so a click on
    one would bubble on to the 3D layer and pick whatever stands behind it. */
@@ -62,7 +68,7 @@ function IconArt({ name, at, size, always = false, me, onClick, dim = false }: {
       ref={ref}
       position={at}
       scale={[size, size, 1]}
-      onClick={onClick && ((e) => { e.stopPropagation(); onClick(); })}
+      onClick={onClick && ((e) => { e.stopPropagation(); if (tap(e)) onClick(); })}
       onPointerOver={onClick && (() => (document.body.style.cursor = "pointer"))}
       onPointerOut={onClick && (() => (document.body.style.cursor = ""))}
     >
@@ -101,7 +107,7 @@ function Ground({ w, onMove }: { w: WorldData; onMove: (p: THREE.Vector3) => voi
 
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} onPointerDown={(e) => { e.stopPropagation(); onMove(e.point.clone()); }}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} onClick={(e) => { e.stopPropagation(); if (tap(e)) onMove(e.point.clone()); }}>
         <circleGeometry args={[w.rim + 22, 96]} />
         <meshBasicMaterial color="#fbfcff" />
       </mesh>
@@ -243,7 +249,7 @@ function Plinths({ w, lit, onPick, onHover }: {
         args={[box, undefined as any, w.projects.length]}
         onClick={(e: ThreeEvent<MouseEvent>) => {
           e.stopPropagation();
-          if (e.instanceId != null) onPick({ kind: "project", slug: w.projects[e.instanceId].slug });
+          if (e.instanceId != null && tap(e)) onPick({ kind: "project", slug: w.projects[e.instanceId].slug });
         }}
         onPointerMove={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();
@@ -271,7 +277,7 @@ function ProjectArt({ w, shared, lit, onPick }: {
         const go = () => onPick({ kind: "project", slug: p.slug });
         if (FACADE[p.slug])
           return (
-            <group key={p.slug} position={[p.x, h, p.z]} onClick={(e) => { e.stopPropagation(); go(); }}>
+            <group key={p.slug} position={[p.x, h, p.z]} onClick={(e) => { e.stopPropagation(); if (tap(e)) go(); }}>
               <Cutout src={FACADE[p.slug]} width={4.6} position={[0, 0, 0]} anchor="bottom" billboard />
             </group>
           );
@@ -350,7 +356,7 @@ function SkillStones({ w, shared, spots, lit, onPick, onHover }: {
         args={[geo, undefined as any, w.skills.length]}
         onClick={(e: ThreeEvent<MouseEvent>) => {
           e.stopPropagation();
-          if (e.instanceId != null) onPick({ kind: "skill", slug: w.skills[e.instanceId].slug });
+          if (e.instanceId != null && tap(e)) onPick({ kind: "skill", slug: w.skills[e.instanceId].slug });
         }}
         onPointerMove={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();
@@ -423,7 +429,7 @@ function Threads({ w, pick, spots }: { w: WorldData; pick: Pick | null; spots: R
 
 function Centre({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   return (
-    <group onClick={(e) => { e.stopPropagation(); onPick({ kind: "about" }); }}>
+    <group onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); }}>
       <mesh position={[0, 0.3, -4]}>
         <cylinderGeometry args={[5.2, 5.6, 0.6, 40]} />
         <meshBasicMaterial color="#ffffff" />
@@ -467,6 +473,11 @@ function Visitor({ shared, motion }: { shared: Shared; motion: "full" | "static"
     dt = Math.min(dt, 0.05);
     const k = keys.current, pos = shared.me.current, target = shared.target;
     const step = new THREE.Vector3();
+    // Q and E turn, R and F tilt; walking is relative to where the camera faces
+    const turn = (k["q"] ? 1 : 0) - (k["e"] ? 1 : 0);
+    const tilt = (k["r"] ? 1 : 0) - (k["f"] ? 1 : 0);
+    if (turn) shared.yaw.current += turn * dt * 1.6;
+    if (tilt) shared.pitch.current = THREE.MathUtils.clamp(shared.pitch.current + tilt * dt * 0.9, 0.12, 1.45);
     if (k["w"] || k["arrowup"]) step.z -= 1;
     if (k["s"] || k["arrowdown"]) step.z += 1;
     if (k["a"] || k["arrowleft"]) step.x -= 1;
@@ -474,6 +485,7 @@ function Visitor({ shared, motion }: { shared: Shared; motion: "full" | "static"
     const speed = 18 * Math.max(1, shared.far.current * 0.8);
 
     if (step.lengthSq() > 0) {
+      step.applyAxisAngle(new THREE.Vector3(0, 1, 0), shared.yaw.current);
       target.current = null;
       step.normalize().multiplyScalar(speed);
     } else if (target.current) {
@@ -495,7 +507,9 @@ function Visitor({ shared, motion }: { shared: Shared; motion: "full" | "static"
       const v = vel.current.length();
       body.current.position.y = motion === "static" ? 0 : Math.abs(Math.sin(performance.now() / 110)) * Math.min(v, 20) * 0.016;
       if (v > 0.4) {
-        const a = Math.atan2(vel.current.x, vel.current.z);
+        // which drawing to show depends on heading relative to the camera
+        let a = Math.atan2(vel.current.x, vel.current.z) - shared.yaw.current;
+        a = Math.atan2(Math.sin(a), Math.cos(a));
         const next = a > 2.0 || a < -2.0 ? "back" : a > 0.6 ? "right" : a < -0.6 ? "left" : "front";
         if (next !== faceRef.current) { faceRef.current = next; setFace(next); }
       }
@@ -503,7 +517,9 @@ function Visitor({ shared, motion }: { shared: Shared; motion: "full" | "static"
 
     const narrow = window.innerWidth < 720 ? 1.55 : 1;
     const f = shared.far.current * narrow;
-    const want = new THREE.Vector3(pos.x + 30 * f, 34 * f, pos.z + 44 * f);
+    const R = 63 * f, yw = shared.yaw.current, pt = shared.pitch.current;
+    const want = new THREE.Vector3(
+      pos.x + R * Math.sin(yw) * Math.cos(pt), R * Math.sin(pt), pos.z + R * Math.cos(yw) * Math.cos(pt));
     if (motion === "static") { camera.position.copy(want); look.current.set(pos.x, 2, pos.z); }
     else {
       camera.position.lerp(want, Math.min(1, dt * 2.6));

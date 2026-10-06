@@ -28,7 +28,16 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     me: { current: new THREE.Vector3(0, 0, 13) },
     target: { current: null },
     far: { current: 1 },
+    yaw: { current: Math.atan2(30, 44) },
+    pitch: { current: 0.57 },
   }).current;
+
+  /* drag anywhere on the ground to turn (sideways) and tilt (up and down) */
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null);
+  const turn = (dx: number, dy: number) => {
+    shared.yaw.current -= dx * 0.006;
+    shared.pitch.current = THREE.MathUtils.clamp(shared.pitch.current + dy * 0.004, 0.12, 1.45);
+  };
 
   useEffect(() => {
     fetch(`${ROOT}/data/world.json`).then((r) => r.json()).then(setW);
@@ -78,8 +87,8 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     if (to) {
       // stop just short of it on the camera's side, so it stands in front of
       // you rather than behind your back
-      const near = p.kind === "about" ? [0, 4] : [4, 6];
-      shared.target.current = new THREE.Vector3(to[0] + near[0], 0, to[1] + near[1]);
+      const back = p.kind === "about" ? 8 : 7, yw = shared.yaw.current;
+      shared.target.current = new THREE.Vector3(to[0] + Math.sin(yw) * back, 0, to[1] + Math.cos(yw) * back);
     }
   }, [w, spots, shared]);
 
@@ -98,7 +107,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
                       icon: s.icon, pen: FAMILY_INK[s.family] });
     });
     w.stories.forEach((s) => {
-      if ((s.title + " " + s.line).toLowerCase().includes(t))
+      if ((s.title + " " + s.s + " " + s.a).toLowerCase().includes(t))
         out.push({ pick: { kind: "story", id: s.id }, label: s.title, sub: "Story", icon: `story-${s.id}`, pen: "#1b2437" });
     });
     return out.slice(0, 9);
@@ -108,7 +117,20 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   const dLabel = where.district && w.domains.find((d) => d.id === where.district)?.label;
 
   return (
-    <div className="world atlas">
+    <div
+      className="world atlas"
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).tagName === "CANVAS") drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d || d.id !== e.pointerId) return;
+        turn(e.clientX - d.x, e.clientY - d.y);
+        d.x = e.clientX; d.y = e.clientY;
+      }}
+      onPointerUp={() => (drag.current = null)}
+      onPointerCancel={() => (drag.current = null)}
+    >
       <Canvas
         dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
@@ -163,13 +185,16 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
         <button onClick={() => { shared.far.current = high ? 1 : 2.9; setHigh(!high); }}>
           {high ? "Back down" : "High ground"}
         </button>
+        <button aria-label="Turn left" onClick={() => (shared.yaw.current += 0.6)}>⟲</button>
+        <button aria-label="Turn right" onClick={() => (shared.yaw.current -= 0.6)}>⟳</button>
+        <button aria-label="Tilt" onClick={() => (shared.pitch.current = shared.pitch.current > 1 ? 0.35 : shared.pitch.current + 0.4)}>Tilt</button>
         <button onClick={() => { shared.target.current = new THREE.Vector3(0, 0, 13); setPick(null); }}>Plaza</button>
         <a href={`${ROOT}/work/`}>Read as text</a>
       </div>
 
       <div className="world-help">
-        {touch ? "Tap the ground to walk · tap anything to open it"
-               : "Click to walk or open · W A S D · scroll to rise"}
+        {touch ? "Tap to walk or open · drag to turn and tilt"
+               : "Click to walk or open · drag to turn and tilt · W A S D · Q E R F · scroll to rise"}
       </div>
 
       {pick && <Panel w={w} pick={pick} onPick={onPick} onClose={() => setPick(null)} />}

@@ -78,6 +78,11 @@ function ProjectCard({ w, slug, onPick }: { w: WorldData; slug: string; onPick: 
       <Head icon={`project-${slug}`} kicker={`${dom?.label} · ${span(p)}`} title={p.label} pen={PEN[p.domain]} />
       {p.line && <p className="atlas-lede">{p.line}</p>}
       <p className="atlas-note">{KIND[p.kind] ?? p.kind}</p>
+      {p.did.length > 0 && (
+        <section><h3>What I did</h3>
+          <ul className="atlas-claims">{p.did.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </section>
+      )}
       {p.skills.length > 0 && <section><h3>Skills</h3><SkillChips w={w} names={p.skills} onPick={onPick} /></section>}
       {stories.length > 0 && (
         <section><h3>Stories</h3>
@@ -119,7 +124,10 @@ function StoryCard({ w, id, onPick }: { w: WorldData; id: string; onPick: (p: Pi
   return (
     <>
       <Head icon={`story-${id}`} kicker={`A story · ${s.period}`} title={s.title} pen={p ? PEN[p.domain] : "#1b2437"} />
-      {s.line && <p className="atlas-lede">{s.line}</p>}
+      <dl className="atlas-star">
+        {([["Situation", s.s], ["Task", s.t], ["Action", s.a], ["Result", s.r]] as const)
+          .filter(([, x]) => x).map(([k, x]) => <div key={k}><dt>{k}</dt><dd>{x}</dd></div>)}
+      </dl>
       {p && <ul className="atlas-list"><ProjectRow w={w} slug={p.slug} onPick={onPick} /></ul>}
     </>
   );
@@ -140,7 +148,7 @@ function AboutCard({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   return (
     <>
       <Head icon="mark" kicker={w.profile.headline} title={w.profile.name} pen="#1b2437" />
-      <p className="atlas-lede">{w.profile.line}</p>
+      {(w.about?.intro ?? [w.profile.line]).map((x, i) => <p key={i} className={i ? "" : "atlas-lede"}>{x}</p>)}
       <section><h3>Timeline</h3>
         {w.roles.map((r) => (
           <div className="atlas-role-read" key={r.id}>
@@ -148,6 +156,19 @@ function AboutCard({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
           </div>
         ))}
       </section>
+      {w.about && w.about.built.length > 0 && (
+        <section><h3>Built for myself</h3>
+          {w.about.built.map((b) => (
+            <div className="atlas-role-read" key={b.name}>
+              <a href={b.url} target="_blank" rel="noopener"><b>{b.name}</b></a><p>{b.line}</p>
+            </div>
+          ))}
+        </section>
+      )}
+      {w.about && w.about.links.length > 0 && (
+        <p className="atlas-links">{w.about.links.map((l) => (
+          <a key={l.url} href={l.url} target="_blank" rel="noopener">{l.label}</a>))}</p>
+      )}
       <section><h3>Reading the world</h3>
         <ul className="atlas-claims">
           <li>The plaza is now; each ring outwards is a year further back.</li>

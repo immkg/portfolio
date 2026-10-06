@@ -4,14 +4,22 @@
 
 export type Project = {
   slug: string; label: string; line: string; domain: string; kind: string;
-  tier: number; first: string | null; last: string | null;
+  tier: number; first: string | null; last: string | null; did: string[];
   skills: string[]; stories: string[]; x: number; z: number;
 };
 export type Skill = {
   slug: string; name: string; group: string; icon: string; family: string;
   strength: number; line: string; projects: string[]; links: string[];
 };
-export type Story = { id: string; title: string; project: string; period: string; line: string };
+export type Story = {
+  id: string; title: string; project: string; period: string;
+  s: string; t: string; a: string; r: string;
+};
+export type About = {
+  intro: string[];
+  built: { name: string; url: string; line: string }[];
+  links: { label: string; url: string }[];
+};
 export type Role = {
   id: string; title: string; employer: string; dates: string;
   r_start: number; r_end: number;
@@ -22,6 +30,7 @@ export type WorldData = {
   plaza: number; rim: number;
   profile: { name: string; headline: string; line: string };
   roles: Role[];
+  about: About | null;
   domains: { id: string; label: string; count: number }[];
   districts: string[];
   projects: Project[]; skills: Skill[]; stories: Story[];
