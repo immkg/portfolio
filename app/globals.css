@@ -749,3 +749,8 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
 .plane-land > div button { background: #fff; color: var(--ink); border: 1px solid var(--ink); }
 .plane-again { margin-top: 0.5rem; font: inherit; font-size: 0.8rem; color: var(--ink-3); background: none; border: 0; cursor: pointer; }
 @media (max-width: 420px) { .plane-land > div { grid-template-columns: repeat(2, 1fr); } }
+.egg-note {
+  max-width: 15rem; white-space: normal; text-align: center; font-size: 0.82rem; font-weight: 600;
+  background: #fff8d6; color: var(--ink); border: 1.5px dashed var(--ink); border-radius: 10px;
+  padding: 0.45rem 0.7rem; animation: world-card-in 220ms ease-out;
+}

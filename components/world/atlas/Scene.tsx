@@ -5,6 +5,7 @@ import { Html, useTexture } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import Cutout from "../Cutout";
+import { Decal, CAMERA_YAW, tap, paint, WorldMarks } from "./Marks";
 import {
   type WorldData, type Pick, type Project, PEN, FILL, FAMILY_INK, ICON,
   districtSpot, skillSpots, plinth, span,
@@ -33,8 +34,6 @@ export type Shared = {
   pitch: React.MutableRefObject<number>;
 };
 
-/* A drag turns the world; only a press that barely moved counts as a click. */
-const tap = (e: ThreeEvent<MouseEvent>) => e.delta <= 6;
 
 /* Signs drawn with <Html> live inside the canvas's own element, so a click on
    one would bubble on to the 3D layer and pick whatever stands behind it. */
@@ -175,16 +174,20 @@ function Years({ w }: { w: WorldData }) {
 /* ---------------- a road out to each district, with its years marked ---------------- */
 
 /** One small drawn label per year, shared by every road. */
-function yearTexture(text: string) {
+/** One drawn marker per year, shared by every road: the year, and how far
+ *  back it is, for anyone who would rather not do the arithmetic. */
+function yearTexture(year: number, now: number) {
   const c = document.createElement("canvas");
-  c.width = 128; c.height = 64;
+  c.width = 176; c.height = 96;
   const g = c.getContext("2d")!;
   g.fillStyle = "#1b2437";
-  g.beginPath(); g.roundRect(4, 8, 120, 48, 10); g.fill();
-  g.fillStyle = "#ffffff";
-  g.font = "600 34px system-ui, sans-serif";
-  g.textAlign = "center"; g.textBaseline = "middle";
-  g.fillText(text, 64, 33);
+  g.beginPath(); g.roundRect(4, 4, 168, 88, 14); g.fill();
+  g.fillStyle = "#ffffff"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "700 40px system-ui, sans-serif";
+  g.fillText(String(year), 88, 36);
+  const back = now - year;
+  g.fillStyle = "#c9d2e6"; g.font = "600 22px system-ui, sans-serif";
+  g.fillText(back <= 0 ? "this year" : back === 1 ? "1 yr back" : `${back} yrs back`, 88, 71);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -193,7 +196,7 @@ function yearTexture(text: string) {
 function Roads({ w }: { w: WorldData }) {
   const n = w.districts.length;
   const sector = (Math.PI * 2) / n;
-  const tex = useMemo(() => Object.fromEntries(w.rings.map((y) => [y.year, yearTexture(String(y.year))])), [w]);
+  const tex = useMemo(() => Object.fromEntries(w.rings.map((y) => [y.year, yearTexture(y.year, +w.now.slice(0, 4))])), [w]);
   const len = w.rim + 8 - w.plaza;
   return (
     <group>
@@ -221,7 +224,7 @@ function Roads({ w }: { w: WorldData }) {
             ))}
             {/* the year, where the road crosses each ring */}
             {w.rings.map((y) => (
-              <sprite key={y.year} position={[y.r, 1.1, 2.4]} scale={[2.6, 1.3, 1]}>
+              <sprite key={y.year} position={[y.r, 1.3, 2.6]} scale={[2.9, 1.58, 1]}>
                 <spriteMaterial map={tex[y.year]} toneMapped={false} />
               </sprite>
             ))}
@@ -487,41 +490,6 @@ function Threads({ w, pick, spots }: { w: WorldData; pick: Pick | null; spots: R
 
 /* ---------------- the plaza's markings ---------------- */
 
-/** Paint for the ground: lettering on a transparent canvas, sized to the text. */
-function paint(text: string, o: { size?: number; ink?: string; bg?: string; weight?: number; pad?: number } = {}) {
-  const size = o.size ?? 64, pad = o.pad ?? 18, weight = o.weight ?? 800;
-  const c = document.createElement("canvas");
-  const g0 = c.getContext("2d")!;
-  g0.font = `${weight} ${size}px system-ui, sans-serif`;
-  c.width = Math.ceil(g0.measureText(text).width + pad * 2);
-  c.height = Math.ceil(size * 1.5);
-  const g = c.getContext("2d")!;
-  if (o.bg) { g.fillStyle = o.bg; g.beginPath(); g.roundRect(0, 0, c.width, c.height, c.height / 2.4); g.fill(); }
-  g.font = `${weight} ${size}px system-ui, sans-serif`;
-  g.fillStyle = o.ink ?? INK; g.textAlign = "center"; g.textBaseline = "middle";
-  g.fillText(text, c.width / 2, c.height / 2 + size * 0.05);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return { tex: t, aspect: c.width / c.height };
-}
-
-/** A painted word lying flat on the ground; `h` is its height in world units. */
-function Decal({ text, h, at, yaw = 0, ...o }: {
-  text: string; h: number; at: [number, number, number]; yaw?: number;
-  size?: number; ink?: string; bg?: string; weight?: number;
-}) {
-  const { tex, aspect } = useMemo(() => paint(text, o), [text, o.ink, o.bg]); // eslint-disable-line react-hooks/exhaustive-deps
-  return (
-    <group position={at} rotation={[0, yaw, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[h * aspect, h]} />
-        <meshBasicMaterial map={tex} transparent depthWrite={false} toneMapped={false} />
-      </mesh>
-    </group>
-  );
-}
-
-const CAMERA_YAW = Math.atan2(30, 44);   // the default view, so painted words face the visitor
 
 function PlazaMarks({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   const n = w.districts.length;
@@ -666,7 +634,7 @@ function Fingerpost({ w, onPick, label }: { w: WorldData; onPick: (p: Pick) => v
 
 function Centre({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   return (
-    <group onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "reach" }); }}>
+    <group onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); }}>
       <mesh position={[0, 0.3, -4]}>
         <cylinderGeometry args={[5.2, 5.6, 0.6, 40]} />
         <meshBasicMaterial color="#ffffff" />
@@ -769,9 +737,9 @@ function Visitor({ shared, motion, onPick }: {
 
   return (
     <group ref={body}>
-      {/* the walker is drawn as me: click me and a paper plane is ready to send */}
+      {/* the walker is drawn as me: click me to read more about me */}
       <group
-        onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "reach" }); }}
+        onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); }}
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "")}
       >
@@ -849,6 +817,7 @@ export default function Scene({ w, shared, pick, onPick, motion }: {
       <Years w={w} />
       <Roads w={w} />
       <PlazaMarks w={w} onPick={onPick} />
+      <WorldMarks w={w} spots={spots} onPick={onPick} />
       <Gates w={w} shared={shared} onPick={onPick} />
       <Plinths w={w} lit={litP} onPick={onPick} onHover={setHoverP} />
       <SkillStones w={w} shared={shared} spots={spots} lit={litS} onPick={onPick} onHover={setHoverS} />

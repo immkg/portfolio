@@ -84,7 +84,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
       const x = s && w.projects.find((o) => o.slug === s.project);
       if (x) to = [x.x, x.z];
     } else if (p.kind === "district") to = districtSpot(w.districts.indexOf(p.id), w.districts.length, w.plaza + 14);
-    else if (p.kind === "reach") to = null;      // the card comes to you; nobody has to walk
+    else if (p.kind === "reach" || p.kind === "about") to = null;   // these cards come to you
     else to = [0, 4];
     if (to) {
       // stop just short of it on the camera's side, so it stands in front of
