@@ -169,11 +169,15 @@ function DistrictCard({ w, id, onPick }: { w: WorldData; id: string; onPick: (p:
 }
 
 function ReachCard({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
+  const c = w.about?.contact;
   return (
     <>
-      <Head icon="hero-mayank" kicker={w.profile.headline} title={w.profile.name} pen="#1b2437" />
-      {w.about?.contact && <ReachOut name={w.profile.name} title={w.profile.headline.split("|")[0].trim()} c={w.about.contact} />}
-      <button className="world-enter" onClick={() => onPick({ kind: "about" })}>More about me</button>
+      <div className="plane-who">
+        <b>{w.profile.name}</b>
+        {c?.open_to && <span>Open to {c.open_to.replace(/^Engineering leadership roles:\s*/i, "").replace(/\.$/, "")}</span>}
+      </div>
+      {c && <ReachOut name={w.profile.name} title={w.profile.headline.split("|")[0].trim()} c={c} />}
+      <button className="plane-more" onClick={() => onPick({ kind: "about" })}>More about me →</button>
     </>
   );
 }
@@ -182,7 +186,7 @@ function AboutCard({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   return (
     <>
       <Head icon="mark" kicker={w.profile.headline} title={w.profile.name} pen="#1b2437" />
-      {w.about?.contact && <ReachOut name={w.profile.name} title={w.profile.headline.split("|")[0].trim()} c={w.about.contact} />}
+      <button className="plane-throw is-small" onClick={() => onPick({ kind: "reach" })}>Throw me a paper plane ✈</button>
       {(w.about?.intro ?? [w.profile.line]).map((x, i) => <p key={i} className={i ? "" : "atlas-lede"}>{x}</p>)}
       <section><h3>Timeline</h3>
         {w.roles.map((r) => (

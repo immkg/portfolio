@@ -62,24 +62,25 @@ export function StoryBlock({ s, w }: { s: Story; w: WorldData }) {
   );
 }
 
-/** The paper-plane strip: every way to reach me, on every page. */
+/** The paper-plane strip: the easy ways to reach me, on every page. */
 export function PaperPlane({ w }: { w: WorldData }) {
   const c = w.about?.contact;
   if (!c) return null;
+  const tel = c.phone?.replace(/\s+/g, "");
   return (
     <section className="pg-plane">
       <div>
-        <h2><span aria-hidden="true">✈</span> Send me a paper plane</h2>
-        {c.open_to && <p>{c.open_to}</p>}
+        <h2><span aria-hidden="true">✈</span> Throw me a paper plane</h2>
+        <p>Write a line; I&rsquo;ll find it in my inbox.</p>
       </div>
       <div className="pg-plane-actions">
-        <a className="is-main" href={`mailto:${c.email}?subject=${encodeURIComponent("Hello from your portfolio")}`}>Fold a plane (email)</a>
-        <a className="is-main" href={c.resume} download>Take my résumé</a>
-        {c.phone && <a href={`tel:${c.phone.replace(/\s+/g, "")}`}>Ring my desk</a>}
-        {c.whatsapp && <a href={c.whatsapp} rel="noopener">WhatsApp</a>}
-        <a href={c.linkedin} rel="noopener">LinkedIn</a>
-        <a href={c.github} rel="noopener">GitHub</a>
-        <InWorld p="reach" label="Scan my QR in the world" />
+        <a className="is-main" href={`mailto:${c.email}?subject=${encodeURIComponent("A paper plane from your portfolio")}`}>✉ Email</a>
+        <a className="is-main" href={c.resume} download>▤ Résumé</a>
+        {tel && <a href={`tel:${tel}`}>☎ Call</a>}
+        {c.whatsapp && <a href={c.whatsapp} rel="noopener">✆ WhatsApp</a>}
+        <span className="pg-plane-small">
+          <a href={c.linkedin} rel="noopener">LinkedIn</a> · <a href={c.github} rel="noopener">GitHub</a> · <a href="/portfolio/?p=reach">QR in the world</a>
+        </span>
       </div>
     </section>
   );

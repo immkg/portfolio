@@ -499,32 +499,50 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
 .atlas-links { display: flex; gap: 0.5rem; margin-top: 1rem; }
 .atlas-links a { border: 1px solid var(--ink); border-radius: 999px; padding: 0.2rem 0.8rem; text-decoration: none; font-size: 0.85rem; }
 
-/* ---------- reach out ---------- */
+/* ---------- reach out: a paper plane ---------- */
 .atlas-reach {
   font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
   margin-left: auto; color: #fff; background: var(--ink); border: 1px solid var(--ink);
   border-radius: 999px; padding: 0.45rem 1rem;
 }
 .atlas-reach + .atlas-search { margin-left: 0; }
-.reach { margin: 0.4rem 0 1.2rem; padding: 0.9rem; border: 1px solid var(--rule-bright); border-radius: 10px; background: var(--tint); }
-.reach h3 { margin-top: 0; }
-.reach-open { font-size: 0.88rem !important; color: var(--ink-2); margin-bottom: 0.7rem; }
-.reach-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.reach-actions a, .reach-actions button {
-  font: inherit; font-size: 0.82rem; color: var(--ink); text-decoration: none; cursor: pointer;
-  background: var(--paper-2); border: 1px solid var(--ink); border-radius: 999px; padding: 0.3rem 0.8rem;
-}
-.reach-actions .reach-main { background: var(--ink); color: #fff; font-weight: 600; }
-.reach-qr { display: flex; gap: 0.9rem; align-items: center; margin-top: 0.9rem; }
-.reach-qr img, .reach-qr-wait { width: 150px; height: 150px; border-radius: 8px; background: #fff; border: 1px solid var(--rule); flex: none; }
-.reach-tabs { display: flex; gap: 0.25rem; margin-bottom: 0.4rem; }
-.reach-tabs button { font: inherit; font-size: 0.75rem; cursor: pointer; background: none; border: 1px solid var(--rule-bright); border-radius: 999px; padding: 0.15rem 0.6rem; color: var(--ink-2); }
-.reach-tabs button[aria-selected="true"] { border-color: var(--ink); color: var(--ink); font-weight: 600; }
-.reach-said { margin-top: 0.6rem; font-size: 0.8rem; color: var(--p-conv); font-weight: 600; }
-@media (max-width: 720px) {
-  .atlas-reach { order: 2; padding: 0.35rem 0.8rem; font-size: 0.78rem; }
-  .reach-qr img, .reach-qr-wait { width: 120px; height: 120px; }
-}
+.atlas-reach span { display: inline-block; transition: transform 300ms ease; }
+.atlas-reach:hover span { transform: translate(3px, -3px) rotate(-8deg); }
+
+.plane-who { margin: 0.2rem 2rem 0.9rem 0; }
+.plane-who b { display: block; font-size: var(--step-1); font-weight: 600; }
+.plane-who span { color: var(--ink-3); font-size: 0.85rem; }
+.plane { text-align: center; padding: 1.2rem 1rem 1rem; border-radius: 14px; background: linear-gradient(180deg, #eef1fb, #fbfcff); border: 1px solid var(--rule); }
+.plane-art { display: inline-block; animation: plane-bob 3.2s ease-in-out infinite; }
+.plane-art.is-flying { animation: plane-fly 0.9s cubic-bezier(.5,0,.8,.4) forwards; }
+@keyframes plane-bob { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(3deg); } }
+@keyframes plane-fly { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 30% { transform: translate(-14px, 8px) rotate(-10deg); } 100% { transform: translate(260px, -220px) rotate(-25deg) scale(.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .plane-art, .plane-art.is-flying { animation: none; } }
+.plane h3 { margin: 0.4rem 0 0.1rem; font-size: var(--step-1); text-transform: none; letter-spacing: 0; color: var(--ink); }
+.plane-sub { color: var(--ink-3); font-size: 0.85rem !important; margin: 0 auto 0.7rem !important; }
+.plane textarea { width: 100%; resize: vertical; font: inherit; font-size: 0.92rem; color: var(--ink); background: #fff; border: 1px solid var(--rule-bright); border-radius: 10px; padding: 0.6rem 0.7rem; text-align: left; }
+.plane textarea:focus { outline: 2px solid var(--p-doc); border-color: transparent; }
+.plane-throw { margin-top: 0.6rem; width: 100%; font: inherit; font-weight: 700; font-size: 0.98rem; cursor: pointer; color: #fff; background: var(--ink); border: 0; border-radius: 999px; padding: 0.6rem 1rem; transition: transform 120ms ease; }
+.plane-throw:hover { transform: translateY(-1px); }
+.plane-throw:disabled { opacity: 0.6; }
+.plane-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 0.4rem; margin-top: 1rem; }
+.plane-tiles a { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; padding: 0.55rem 0.2rem; border-radius: 10px; background: #fff; border: 1px solid var(--rule-bright); text-decoration: none; color: var(--ink); font-size: 0.8rem; }
+.plane-tiles a:hover { border-color: var(--ink); }
+.plane-tiles b { font-size: 1.15rem; line-height: 1; }
+.plane-icons { display: flex; justify-content: center; gap: 0.3rem; margin-top: 0.8rem; }
+.plane-icons a, .plane-icons button { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-2); background: none; border: 1px solid transparent; cursor: pointer; }
+.plane-icons a:hover, .plane-icons button:hover { border-color: var(--rule-bright); background: #fff; color: var(--ink); }
+.plane-qr { margin-top: 0.6rem; font-size: 0.82rem; color: var(--ink-3); }
+.plane-qr summary { cursor: pointer; list-style: none; }
+.plane-qr summary::before { content: "▸ "; }
+.plane-qr[open] summary::before { content: "▾ "; }
+.plane-qr > div { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-top: 0.6rem; }
+.plane-qr img, .plane-qr-wait { width: 140px; height: 140px; border-radius: 8px; background: #fff; border: 1px solid var(--rule); }
+.plane-qr-modes { display: flex; gap: 0.3rem; }
+.plane-qr-modes button { font: inherit; font-size: 0.75rem; cursor: pointer; background: none; border: 1px solid var(--rule-bright); border-radius: 999px; padding: 0.15rem 0.6rem; color: var(--ink-2); }
+.plane-qr-modes button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.plane-said { margin-top: 0.6rem; font-size: 0.82rem; color: var(--p-conv); font-weight: 600; }
+.plane-more { margin-top: 0.8rem; font: inherit; font-size: 0.88rem; cursor: pointer; background: none; border: 0; color: var(--ink-2); text-decoration: underline; text-underline-offset: 0.25em; }
 
 /* ---------- minimap and road stepping ---------- */
 .minimap { position: fixed; left: 1rem; top: 5.2rem; z-index: 13; }
@@ -550,9 +568,6 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
   .minimap svg { width: 132px; height: 132px; }
   .minimap-open { top: auto; bottom: 3.4rem; left: 0.6rem; }
 }
-.reach-sub { font-size: 0.85rem !important; color: var(--ink-3); margin: -0.2rem 0 0.6rem; }
-.atlas-reach span { display: inline-block; transition: transform 300ms ease; }
-.atlas-reach:hover span { transform: translate(3px, -3px) rotate(-8deg); }
 
 /* ============================================================
    The text pages: the world, flattened onto paper. Same pens,
@@ -709,3 +724,7 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
 .pg-step { display: grid; grid-template-columns: 3.2rem 1fr; gap: 0.6rem; align-items: start; padding-top: 0.45rem; border-top: 1px dashed var(--rule); }
 .pg-step-year { font-weight: 700; font-size: 0.9rem; color: var(--ink-2); padding-top: 0.15rem; }
 @media (max-width: 720px) { .ex-bar { top: 2.6rem; } .pg-step { grid-template-columns: 1fr; gap: 0.2rem; } }
+.plane-throw.is-small { width: auto; padding: 0.45rem 1.1rem; font-size: 0.88rem; margin: 0.2rem 0 0.8rem; }
+.pg-plane-small { flex-basis: 100%; text-align: right; color: #7b87a3; font-size: 0.82rem; }
+.pg-plane-actions .pg-plane-small a { border: 0; padding: 0; text-decoration: underline; }
+@media (max-width: 720px) { .pg-plane-small { text-align: left; } }

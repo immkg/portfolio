@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Contact } from "./model";
 
-/** A vCard with no phone number: scanning the QR, or opening the file, offers
- *  to save the contact with email, LinkedIn and the site. */
+/** A vCard: scanning the QR, or opening the file, offers to save the contact. */
 function vcard(name: string, title: string, c: Contact) {
   const [first, ...rest] = name.split(" ");
   return [
@@ -18,21 +17,43 @@ function vcard(name: string, title: string, c: Contact) {
   ].filter(Boolean).join("\r\n");
 }
 
+const Plane = () => (
+  <svg viewBox="0 0 64 48" width="64" height="48" aria-hidden="true">
+    <path d="M2 22 L62 2 L40 46 L30 30 Z" fill="#fff" stroke="#1b2437" strokeWidth="2.2" strokeLinejoin="round" />
+    <path d="M62 2 L30 30 L26 44 L34 33" fill="#dcdefb" stroke="#1b2437" strokeWidth="2.2" strokeLinejoin="round" />
+  </svg>
+);
+
+/* small line icons, drawn rather than fetched */
+const I = {
+  in: <path d="M4 9h3v10H4zM5.5 4.5a1.7 1.7 0 110 3.4 1.7 1.7 0 010-3.4zM10 9h3v1.5c.5-.9 1.6-1.8 3.3-1.8 3 0 3.7 2 3.7 4.6V19h-3v-5c0-1.2-.1-2.6-1.7-2.6S13 12.6 13 14v5h-3z" fill="currentColor" />,
+  gh: <path d="M12 3a9 9 0 00-2.8 17.5c.4.1.6-.2.6-.4v-1.6c-2.5.5-3-1.1-3-1.1-.4-1-1-1.3-1-1.3-.8-.6.1-.6.1-.6.9.1 1.4.9 1.4.9.8 1.4 2.1 1 2.6.8.1-.6.3-1 .6-1.2-2-.2-4.1-1-4.1-4.4 0-1 .3-1.8.9-2.4-.1-.2-.4-1.1.1-2.4 0 0 .8-.2 2.5.9a8.6 8.6 0 014.5 0c1.7-1.1 2.5-.9 2.5-.9.5 1.3.2 2.2.1 2.4.6.6.9 1.4.9 2.4 0 3.4-2.1 4.2-4.1 4.4.3.3.6.8.6 1.6v2.4c0 .2.2.5.6.4A9 9 0 0012 3z" fill="currentColor" />,
+  copy: <><rect x="8" y="8" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M5 15V6a1 1 0 011-1h9" fill="none" stroke="currentColor" strokeWidth="1.8" /></>,
+  card: <><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" /><circle cx="9" cy="11" r="2.2" fill="currentColor" /><path d="M5.5 16c.6-1.6 1.9-2.4 3.5-2.4s2.9.8 3.5 2.4M14 10h4M14 13h3" fill="none" stroke="currentColor" strokeWidth="1.6" /></>,
+  share: <path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 001 1h12a1 1 0 001-1v-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />,
+};
+const Ico = ({ d }: { d: React.ReactNode }) => <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">{d}</svg>;
+
 export default function ReachOut({ name, title, c }: { name: string; title: string; c: Contact }) {
+  const [msg, setMsg] = useState("");
+  const [flying, setFlying] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
   const [mode, setMode] = useState<"contact" | "site">("contact");
   const [said, setSaid] = useState<string | null>(null);
   const card = vcard(name, title, c);
+  const tel = c.phone?.replace(/\s+/g, "");
 
   useEffect(() => {
+    if (!qrOpen) return;
     let live = true;
     import("qrcode").then((Q) =>
       Q.toDataURL(mode === "contact" ? card : c.site, { margin: 1, width: 360, color: { dark: "#1b2437", light: "#ffffff" } })
     ).then((u) => live && setQr(u)).catch(() => {});
     return () => { live = false; };
-  }, [mode, card, c.site]);
+  }, [qrOpen, mode, card, c.site]);
 
-  const flash = (m: string) => { setSaid(m); setTimeout(() => setSaid(null), 1800); };
+  const flash = (m: string) => { setSaid(m); setTimeout(() => setSaid(null), 2200); };
   const copy = async (text: string, m: string) => {
     try { await navigator.clipboard.writeText(text); flash(m); } catch { flash("Copy not allowed here"); }
   };
@@ -47,40 +68,54 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
     if ((navigator as any).share) { try { await (navigator as any).share(data); return; } catch { return; } }
     copy(c.site, "Link copied");
   };
-  const mail = (subject: string, body: string) =>
+  const mailto = (subject: string, body: string) =>
     `mailto:${c.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
+  /* fold the note into a plane, let it fly, then hand it to the mail app */
+  const throwPlane = () => {
+    setFlying(true);
+    const body = (msg.trim() || "Hi Mayank,") + "\n\n(thrown from your portfolio world)";
+    setTimeout(() => { window.location.href = mailto("A paper plane from your portfolio", body); }, 750);
+    setTimeout(() => { setFlying(false); flash("Plane thrown. Your mail app has it."); }, 1300);
+  };
+
   return (
-    <section className="reach">
-      <h3><span aria-hidden="true">✈</span> Send me a paper plane</h3>
-      <p className="reach-sub">Folded here, lands in my inbox. The résumé comes along if you want it.</p>
-      {c.open_to && <p className="reach-open">{c.open_to}</p>}
-      <div className="reach-actions">
-        <a className="reach-main" href={mail("Hello from your portfolio", "Hi Mayank,\n\n")}>Fold a plane (email)</a>
-        <a className="reach-main" href={c.resume} download>Take my résumé</a>
-        {c.phone && <a href={`tel:${c.phone.replace(/\s+/g, "")}`}>Ring my desk</a>}
-        {c.whatsapp && <a href={c.whatsapp} target="_blank" rel="noopener">WhatsApp me</a>}
-        <a href={mail("A role you might like", "Hi Mayank,\n\nRole:\nCompany:\nLink:\n\n")}>I have a role for you</a>
-        <button onClick={() => copy(c.email, "Email copied")}>Copy email</button>
-        <button onClick={saveCard}>Pocket my contact</button>
-        <button onClick={share}>Send this world to a friend</button>
-        <a href={c.linkedin} target="_blank" rel="noopener">LinkedIn</a>
-        <a href={c.github} target="_blank" rel="noopener">GitHub</a>
+    <section className="plane">
+      <div className={`plane-art${flying ? " is-flying" : ""}`}><Plane /></div>
+      <h3>Throw me a paper plane</h3>
+      <p className="plane-sub">Write a line. I&rsquo;ll find it in my inbox.</p>
+      <textarea
+        value={msg} onChange={(e) => setMsg(e.target.value)} rows={3}
+        placeholder="Hi Mayank, we're hiring a Head of Engineering…" aria-label="Your message"
+      />
+      <button className="plane-throw" onClick={throwPlane} disabled={flying}>Fold &amp; throw ✈</button>
+
+      <div className="plane-tiles">
+        <a href={mailto("Hello from your portfolio", "Hi Mayank,\n\n")}><b>✉</b>Email</a>
+        {tel && <a href={`tel:${tel}`}><b>☎</b>Call</a>}
+        {c.whatsapp && <a href={c.whatsapp} target="_blank" rel="noopener"><b>✆</b>WhatsApp</a>}
+        <a href={c.resume} download><b>▤</b>Résumé</a>
       </div>
-      <div className="reach-qr">
-        {qr ? <img src={qr} alt={mode === "contact" ? "QR code that saves my contact" : "QR code that opens this world"} width={150} height={150} /> : <div className="reach-qr-wait" />}
+
+      <div className="plane-icons">
+        <a href={c.linkedin} target="_blank" rel="noopener" title="LinkedIn" aria-label="LinkedIn"><Ico d={I.in} /></a>
+        <a href={c.github} target="_blank" rel="noopener" title="GitHub" aria-label="GitHub"><Ico d={I.gh} /></a>
+        <button onClick={() => copy(c.email, "Email copied")} title="Copy email" aria-label="Copy email"><Ico d={I.copy} /></button>
+        <button onClick={saveCard} title="Save my contact" aria-label="Save my contact"><Ico d={I.card} /></button>
+        <button onClick={share} title="Share this world" aria-label="Share this world"><Ico d={I.share} /></button>
+      </div>
+
+      <details className="plane-qr" onToggle={(e) => setQrOpen((e.target as HTMLDetailsElement).open)}>
+        <summary>Scan from your phone</summary>
         <div>
-          <div className="reach-tabs" role="tablist">
-            <button role="tab" aria-selected={mode === "contact"} onClick={() => setMode("contact")}>Save contact</button>
-            <button role="tab" aria-selected={mode === "site"} onClick={() => setMode("site")}>Open on phone</button>
+          {qr ? <img src={qr} alt={mode === "contact" ? "QR code that saves my contact" : "QR code that opens this world"} width={140} height={140} /> : <div className="plane-qr-wait" />}
+          <div className="plane-qr-modes">
+            <button aria-pressed={mode === "contact"} onClick={() => setMode("contact")}>Save my contact</button>
+            <button aria-pressed={mode === "site"} onClick={() => setMode("site")}>Open this world</button>
           </div>
-          <p className="atlas-note">
-            {mode === "contact" ? "Scan with a phone camera to save my contact." : "Scan to carry on exploring on your phone."}
-          </p>
-          <p className="atlas-note">{c.email}{c.phone ? ` · ${c.phone}` : ""}{c.city ? ` · ${c.city}` : ""}</p>
         </div>
-      </div>
-      {said && <div className="reach-said" role="status">{said}</div>}
+      </details>
+      {said && <div className="plane-said" role="status">{said}</div>}
     </section>
   );
 }
