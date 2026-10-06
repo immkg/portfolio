@@ -84,6 +84,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
       const x = s && w.projects.find((o) => o.slug === s.project);
       if (x) to = [x.x, x.z];
     } else if (p.kind === "district") to = districtSpot(w.districts.indexOf(p.id), w.districts.length, w.plaza + 14);
+    else if (p.kind === "reach") to = null;      // the card comes to you; nobody has to walk
     else to = [0, 4];
     if (to) {
       // stop just short of it on the camera's side, so it stands in front of
@@ -92,6 +93,24 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
       shared.target.current = new THREE.Vector3(to[0] + Math.sin(yw) * back, 0, to[1] + Math.cos(yw) * back);
     }
   }, [w, spots, shared]);
+
+  /* a link can open the world on one thing: ?p=project:slug, skill:slug,
+     story:id, district:id, reach or about. The text pages link here. */
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!w || opened.current) return;
+    opened.current = true;
+    const q = new URLSearchParams(window.location.search).get("p");
+    if (!q) return;
+    const [kind, id] = q.split(":");
+    const ok =
+      (kind === "project" && w.projects.some((x) => x.slug === id)) ||
+      (kind === "skill" && w.skills.some((x) => x.slug === id)) ||
+      (kind === "story" && w.stories.some((x) => x.id === id)) ||
+      (kind === "district" && w.districts.includes(id));
+    if (ok) onPick({ kind, ...(kind === "story" ? { id } : kind === "district" ? { id } : { slug: id }) } as Pick);
+    else if (kind === "reach" || kind === "about") onPick({ kind } as Pick);
+  }, [w, onPick]);
 
   const hits = useMemo<Hit[]>(() => {
     if (!w || q.trim().length < 2) return [];
@@ -154,7 +173,9 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
             {dLabel ?? (where.when === "Now" ? "The plaza" : "Between districts")}
           </span>
         </div>
-        <button className="atlas-reach" onClick={() => onPick({ kind: "about" })}>Reach out · Résumé</button>
+        <button className="atlas-reach" onClick={() => onPick({ kind: "reach" })}>
+          <span aria-hidden="true">✈</span> Send me a paper plane
+        </button>
         <div className="atlas-search">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a project, skill or story"
                  aria-label="Find a project, skill or story" />

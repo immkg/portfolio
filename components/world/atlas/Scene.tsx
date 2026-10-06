@@ -489,7 +489,7 @@ function Threads({ w, pick, spots }: { w: WorldData; pick: Pick | null; spots: R
 
 function Centre({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   return (
-    <group onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); }}>
+    <group onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "reach" }); }}>
       <mesh position={[0, 0.3, -4]}>
         <cylinderGeometry args={[5.2, 5.6, 0.6, 40]} />
         <meshBasicMaterial color="#ffffff" />
@@ -507,7 +507,9 @@ function Centre({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
 
 /* ---------------- the visitor, and the camera that follows ---------------- */
 
-function Visitor({ shared, motion }: { shared: Shared; motion: "full" | "static" }) {
+function Visitor({ shared, motion, onPick }: {
+  shared: Shared; motion: "full" | "static"; onPick: (p: Pick) => void;
+}) {
   const body = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
@@ -590,7 +592,14 @@ function Visitor({ shared, motion }: { shared: Shared; motion: "full" | "static"
 
   return (
     <group ref={body}>
-      <Cutout src={`walker-${face}`} width={2.6} position={[0, 0, 0]} anchor="bottom" billboard />
+      {/* the walker is drawn as me: click me and a paper plane is ready to send */}
+      <group
+        onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "reach" }); }}
+        onPointerOver={() => (document.body.style.cursor = "pointer")}
+        onPointerOut={() => (document.body.style.cursor = "")}
+      >
+        <Cutout src={`walker-${face}`} width={2.6} position={[0, 0, 0]} anchor="bottom" billboard />
+      </group>
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.95, 20]} />
         <meshBasicMaterial color={INK} transparent opacity={0.12} />
@@ -666,7 +675,7 @@ export default function Scene({ w, shared, pick, onPick, motion }: {
       <Plinths w={w} lit={litP} onPick={onPick} onHover={setHoverP} />
       <SkillStones w={w} shared={shared} spots={spots} lit={litS} onPick={onPick} onHover={setHoverS} />
       <Threads w={w} pick={pick} spots={spots} />
-      <Suspense fallback={null}><Visitor shared={shared} motion={motion} /></Suspense>
+      <Suspense fallback={null}><Visitor shared={shared} motion={motion} onPick={onPick} /></Suspense>
       <Suspense fallback={null}><Centre w={w} onPick={onPick} /></Suspense>
       <Suspense fallback={null}><ProjectArt w={w} shared={shared} lit={litP} onPick={onPick} /></Suspense>
       <Stories w={w} shared={shared} onPick={onPick} />

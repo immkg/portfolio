@@ -23,11 +23,15 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Mayank Kumar Gupta",
     url: "https://immkg.github.io/portfolio/",
+    images: [{ url: "/og-card.jpg", width: 1200, height: 630 }],
   },
+  twitter: { card: "summary_large_image", images: ["/og-card.jpg"] },
+  alternates: { canonical: "/" },
   robots: { index: true, follow: true },
 };
 
 const SHEETS = [
+  { href: "/", label: "Enter the world" },
   { href: "/work/", label: "Skills and work" },
   { href: "/about/", label: "About" },
 ];

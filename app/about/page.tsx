@@ -1,73 +1,72 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { world } from "@/lib/data";
+import { ICON } from "@/components/world/atlas/model";
+import { InWorld, PaperPlane, PersonLd } from "@/components/pages/bits";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Mayank Kumar Gupta — engineering leader and hands-on architect. Language systems " +
-    "that hold their shape, platforms rather than apps, and the architecture written down.",
+    "Mayank Kumar Gupta: engineering leader for SaaS and AI products, hands on throughout. " +
+    "Language systems that hold their shape, platforms rather than apps, and small software built for real needs.",
+  alternates: { canonical: "/about/" },
 };
 
 export default function About() {
+  const w = world();
+  const a = w.about;
   return (
-    <main>
-      <section className="band">
-        <div className="sheet datum">
-          <h1 style={{ fontSize: "var(--step-3)" }}>About</h1>
-          <p className="lede">
-            I build systems that try to understand language, and I have a soft spot
-            for the ones that do it structurally rather than by guessing well.
-          </p>
-          <p style={{ marginTop: "1.5rem" }}>
-            Most of my days go into a stack that turns a question into a parse tree,
-            resolves the entities in it against a semantic graph store, and answers
-            from structure instead of similarity. Embeddings are wonderful and they
-            will take you a long way, but I keep being drawn back to approaches
-            where you can point at the reason an answer came out the way it did.
-          </p>
-          <p>
-            I like platforms more than apps — shared models, an SDK, the unglamorous
-            layer that decides whether the next ten features are pleasant or painful
-            to build. And I like writing the architecture down.
-          </p>
-          <p>
-            Python and TypeScript, some Dart when something wants to be an app, and
-            enough Kubernetes and Terraform to keep it all running.
-          </p>
-        </div>
-      </section>
-
-      <section className="band">
-        <div className="sheet datum">
-          <h2>Built because I wanted them to exist</h2>
-          <div style={{ marginTop: "1.2rem" }}>
-            {[
-              ["navo", "https://github.com/immkg/navo",
-               "A planning system built around how people move through a day, rather than how software likes to store tasks."],
-              ["module-ttt", "https://github.com/TalkingDB/module-ttt",
-               "Symbolic reasoning workflows at the centre of a retrieval stack."],
-              ["general-scheduler", "https://github.com/immkg/general-scheduler",
-               "Timetable scheduling handed to Z3, because constraint solvers are satisfying."],
-            ].map(([name, href, note]) => (
-              <div key={name} style={{ borderTop: "1px solid var(--rule)", padding: "0.8rem 0" }}>
-                <a href={href}>{name}</a>
-                <div style={{ color: "var(--ink-3)", fontSize: "var(--step--1)", maxWidth: "52ch" }}>
-                  {note}
-                </div>
-              </div>
-            ))}
+    <main className="pg">
+      <PersonLd w={w} />
+      <section className="pg-hero">
+        <img src={ICON("hero-mayank")} alt="" width={280} height={280} />
+        <div>
+          <div className="pg-kicker">{w.profile.headline}</div>
+          <h1>About</h1>
+          {(a?.intro ?? [w.profile.line]).map((x, i) => <p key={i} className={i ? "" : "pg-lede"}>{x}</p>)}
+          <div className="pg-hero-links">
+            <InWorld p="reach" label="Meet me in the world" />
+            <Link href="/work/">Skills and work</Link>
           </div>
         </div>
       </section>
 
-      <section className="band">
-        <div className="sheet datum">
-          <h2>Getting in touch</h2>
-          <p style={{ marginTop: "1rem" }}>
-            Bangalore or Hyderabad, open to hybrid.{" "}
-            <a href="mailto:mayankgupta690@gmail.com">mayankgupta690@gmail.com</a>.
-          </p>
-        </div>
+      <section className="pg-band">
+        <h2>How I work</h2>
+        <p>
+          I build systems that try to understand language, and I have a soft spot for the ones that do it
+          structurally rather than by guessing well: a question becomes a parse tree, its entities resolve
+          against a graph, and the answer comes from structure instead of similarity.
+        </p>
+        <p>
+          I like platforms more than apps: shared models, an SDK, the unglamorous layer that decides whether
+          the next ten features are pleasant or painful to build. And I like writing the architecture down.
+        </p>
       </section>
+
+      {a && a.built.length > 0 && (
+        <section className="pg-band">
+          <h2>Built for myself</h2>
+          <div className="pg-built">
+            {a.built.map((b) => (
+              <a key={b.name} href={b.url} rel="noopener" className="pg-built-item">
+                <b>{b.name}</b><span>{b.line}</span><small>github.com/immkg</small>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="pg-band">
+        <h2>Timeline</h2>
+        <ol className="pg-timeline">
+          {[...w.roles].reverse().map((r) => (
+            <li key={r.id}><span className="pg-when">{r.dates}</span><b>{r.title}</b> · {r.employer}</li>
+          ))}
+        </ol>
+      </section>
+
+      <PaperPlane w={w} />
     </main>
   );
 }

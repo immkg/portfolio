@@ -26,6 +26,7 @@ export default function Panel({ w, pick, onPick, onClose }: {
         {pick.kind === "story" && <StoryCard w={w} id={pick.id} onPick={onPick} />}
         {pick.kind === "district" && <DistrictCard w={w} id={pick.id} onPick={onPick} />}
         {pick.kind === "about" && <AboutCard w={w} onPick={onPick} />}
+        {pick.kind === "reach" && <ReachCard w={w} onPick={onPick} />}
       </div>
     </aside>
   );
@@ -123,6 +124,18 @@ function SkillCard({ w, slug, onPick }: { w: WorldData; slug: string; onPick: (p
           <ul className="atlas-list">{s.projects.map((k) => <ProjectRow key={k} w={w} slug={k} onPick={onPick} />)}</ul>
         </section>
       )}
+      {w.stories.some((x) => s.projects.includes(x.project)) && (
+        <section><h3>Stories where it mattered</h3>
+          <ul className="atlas-list">
+            {w.stories.filter((x) => s.projects.includes(x.project)).map((x) => (
+              <li key={x.id}><button onClick={() => onPick({ kind: "story", id: x.id })}>
+                <img src={ICON(`story-${x.id}`)} alt="" width={36} height={36} />
+                <span>{x.title}</span><small>{x.period}</small>
+              </button></li>
+            ))}
+          </ul>
+        </section>
+      )}
       {s.links.length > 0 && <section><h3>Goes with</h3><SkillChips w={w} names={s.links} onPick={onPick} /></section>}
     </>
   );
@@ -151,6 +164,16 @@ function DistrictCard({ w, id, onPick }: { w: WorldData; id: string; onPick: (p:
     <>
       <Head icon={`domain-${id}`} kicker={`${items.length} projects`} title={d?.label ?? id} pen={PEN[id]} />
       <ul className="atlas-list">{items.map((p) => <ProjectRow key={p.slug} w={w} slug={p.slug} onPick={onPick} />)}</ul>
+    </>
+  );
+}
+
+function ReachCard({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
+  return (
+    <>
+      <Head icon="hero-mayank" kicker={w.profile.headline} title={w.profile.name} pen="#1b2437" />
+      {w.about?.contact && <ReachOut name={w.profile.name} title={w.profile.headline.split("|")[0].trim()} c={w.about.contact} />}
+      <button className="world-enter" onClick={() => onPick({ kind: "about" })}>More about me</button>
     </>
   );
 }

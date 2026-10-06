@@ -11,6 +11,7 @@ function vcard(name: string, title: string, c: Contact) {
     "BEGIN:VCARD", "VERSION:3.0",
     `N:${rest.join(" ")};${first};;;`, `FN:${name}`, `TITLE:${title}`,
     `EMAIL;TYPE=INTERNET:${c.email}`,
+    c.phone ? `TEL;TYPE=CELL:${c.phone.replace(/\s+/g, "")}` : "",
     `URL:${c.site}`, `URL;TYPE=LinkedIn:${c.linkedin}`, `URL;TYPE=GitHub:${c.github}`,
     c.city ? `ADR;TYPE=WORK:;;;${c.city};;;` : "",
     "END:VCARD",
@@ -51,15 +52,18 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
 
   return (
     <section className="reach">
-      <h3>Reach out</h3>
+      <h3><span aria-hidden="true">✈</span> Send me a paper plane</h3>
+      <p className="reach-sub">Folded here, lands in my inbox. The résumé comes along if you want it.</p>
       {c.open_to && <p className="reach-open">{c.open_to}</p>}
       <div className="reach-actions">
-        <a className="reach-main" href={mail("Hello from your portfolio", "Hi Mayank,\n\n")}>Email me</a>
-        <a className="reach-main" href={c.resume} download>Download résumé</a>
-        <a href={mail("A role you might like", "Hi Mayank,\n\nRole:\nCompany:\nLink:\n\n")}>Tell me about a role</a>
+        <a className="reach-main" href={mail("Hello from your portfolio", "Hi Mayank,\n\n")}>Fold a plane (email)</a>
+        <a className="reach-main" href={c.resume} download>Take my résumé</a>
+        {c.phone && <a href={`tel:${c.phone.replace(/\s+/g, "")}`}>Ring my desk</a>}
+        {c.whatsapp && <a href={c.whatsapp} target="_blank" rel="noopener">WhatsApp me</a>}
+        <a href={mail("A role you might like", "Hi Mayank,\n\nRole:\nCompany:\nLink:\n\n")}>I have a role for you</a>
         <button onClick={() => copy(c.email, "Email copied")}>Copy email</button>
-        <button onClick={saveCard}>Save contact</button>
-        <button onClick={share}>Share this world</button>
+        <button onClick={saveCard}>Pocket my contact</button>
+        <button onClick={share}>Send this world to a friend</button>
         <a href={c.linkedin} target="_blank" rel="noopener">LinkedIn</a>
         <a href={c.github} target="_blank" rel="noopener">GitHub</a>
       </div>
@@ -73,7 +77,7 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
           <p className="atlas-note">
             {mode === "contact" ? "Scan with a phone camera to save my contact." : "Scan to carry on exploring on your phone."}
           </p>
-          <p className="atlas-note">{c.email}{c.city ? ` · ${c.city}` : ""}</p>
+          <p className="atlas-note">{c.email}{c.phone ? ` · ${c.phone}` : ""}{c.city ? ` · ${c.city}` : ""}</p>
         </div>
       </div>
       {said && <div className="reach-said" role="status">{said}</div>}

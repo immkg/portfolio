@@ -17,7 +17,7 @@ export type Story = {
 };
 export type Contact = {
   email: string; linkedin: string; github: string; site: string;
-  resume: string; city?: string; open_to?: string;
+  resume: string; city?: string; open_to?: string; phone?: string; whatsapp?: string;
 };
 export type About = {
   intro: string[];
@@ -47,6 +47,7 @@ export type Pick =
   | { kind: "skill"; slug: string }
   | { kind: "story"; id: string }
   | { kind: "about" }
+  | { kind: "reach" }
   | { kind: "district"; id: string };
 
 export const ROOT = "/portfolio";
