@@ -562,15 +562,6 @@ function PlazaMarks({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) 
         <Decal text="every ring out is a year further back" h={0.85} at={[0, 0.04, 8.7]} ink="#4e5a74" weight={600} />
       </group>
 
-      {/* 7. where visitors begin */}
-      <group position={[0, 0, 13]} rotation={[0, CAMERA_YAW, 0]}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.045, 0]}>
-          <ringGeometry args={[1.5, 1.85, 40]} />
-          <meshBasicMaterial color="#e0557f" />
-        </mesh>
-        <Decal text="YOU ARE HERE · pick a road" h={0.75} at={[0, 0.05, 2.6]} ink="#ffffff" bg="#e0557f" weight={700} />
-      </group>
-
       {/* 5. a fingerpost by me, one board per district; click one to go */}
       <Fingerpost w={w} onPick={onPick} label={label} />
     </group>
