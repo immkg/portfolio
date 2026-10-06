@@ -769,3 +769,37 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
   .atlas-tools button, .atlas-tools a { font-size: 0.74rem; padding: 0.28rem 0.65rem; }
   .fpv-stick { bottom: 6.2rem; }
 }
+
+/* ---------- phone: a two-row header and a one-row footer ---------- */
+.atlas-short { display: none; }
+@media (max-width: 720px) {
+  .atlas-hud { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.45rem; }
+  .atlas-name { padding: 0.2rem 0.7rem 0.2rem 0.2rem; min-width: 0; }
+  .atlas-name b { font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .atlas-name img { width: 24px; height: 24px; }
+  .atlas-where { flex-direction: column; justify-self: start; min-width: 0; max-width: 100%; padding: 0.12rem 0.55rem; border-radius: 999px; }
+  .atlas-when { font-size: 0.78rem; line-height: 1.1; white-space: nowrap; }
+  .atlas-dist { font-size: 0.66rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .atlas-reach { margin: 0; font-size: 0.8rem; padding: 0.22rem 0.7rem 0.22rem 0.45rem; }
+  .atlas-reach-trail { display: none; }
+  .atlas-search { grid-column: 1 / -1; }
+  .atlas-search input { padding: 0.4rem 0.9rem; font-size: 0.85rem; }
+
+  .atlas-tools {
+    left: 0; right: 0; bottom: 0; max-width: none; gap: 0.35rem;
+    flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none;
+    padding: 0.5rem 0.6rem calc(0.5rem + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, color-mix(in oklab, var(--paper) 92%, transparent) 60%, transparent);
+  }
+  .atlas-tools::-webkit-scrollbar { display: none; }
+  .atlas-tools button, .atlas-tools a { flex: none; font-size: 0.76rem; padding: 0.32rem 0.75rem; }
+  .atlas-tools [aria-label="Turn left"], .atlas-tools [aria-label="Turn right"] { display: none; }
+  .atlas-tools a { margin-left: auto; }
+  .atlas-long { display: none; }
+  .atlas-short { display: inline; }
+
+  .minimap, .minimap-open { bottom: 3.5rem; left: 0.6rem; }
+  .minimap svg { width: 112px; height: 112px; }
+  .minimap-close { top: 0; right: 0; width: 20px; height: 20px; font-size: 0.75rem; }
+  .fpv-stick { bottom: 4.2rem; }
+}

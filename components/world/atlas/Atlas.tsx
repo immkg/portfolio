@@ -313,7 +313,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
         {view === "tp" && <button aria-label="Turn right" onClick={() => (shared.yaw.current -= 0.6)}>⟳</button>}
         {view === "tp" && <button aria-label="Tilt" onClick={() => (shared.pitch.current = shared.pitch.current > 1 ? 0.35 : shared.pitch.current + 0.4)}>Tilt</button>}
         <button onClick={() => { shared.target.current = new THREE.Vector3(0, 0, 13); setPick(null); }}>Plaza</button>
-        <a href={`${ROOT}/work/`}>Read as text</a>
+        <a href={`${ROOT}/work/`}><span className="atlas-long">Read as text</span><span className="atlas-short">As text</span></a>
       </div>
 
       <div className="world-help">
