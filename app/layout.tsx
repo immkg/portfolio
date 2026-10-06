@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 };
 
 const SHEETS = [
+  { href: "/plot/", label: "Plot" },
   { href: "/work/", label: "Work" },
   { href: "/journey/", label: "Journey" },
   { href: "/about/", label: "About" },
