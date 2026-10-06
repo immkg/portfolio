@@ -5,7 +5,8 @@ import { Html, useTexture } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import Cutout from "../Cutout";
-import { Decal, CAMERA_YAW, tap, paint, WorldMarks } from "./Marks";
+import { Decal, CAMERA_YAW, tap, paint, WorldMarks, Sky } from "./Marks";
+import { type AimTarget, buildColliders, buildTargets, groundAt, slide } from "./Colliders";
 import {
   type WorldData, type Pick, type Project, PEN, FILL, FAMILY_INK, ICON,
   districtSpot, skillSpots, plinth, span,
@@ -32,6 +33,21 @@ export type Shared = {
   /** camera heading round the visitor, and its tilt above the ground */
   yaw: React.MutableRefObject<number>;
   pitch: React.MutableRefObject<number>;
+  /** which view is wanted, and how far the camera has gone into it (0 above, 1 at the eyes) */
+  view: React.MutableRefObject<"tp" | "fpv">;
+  blend: React.MutableRefObject<number>;
+  /** first-person head tilt, up and down */
+  look: React.MutableRefObject<number>;
+  /** the phone joystick, -1..1 each way */
+  stick: React.MutableRefObject<{ x: number; y: number }>;
+  /** what the crosshair rests on; the HUD reads it */
+  aim: React.MutableRefObject<AimTarget | null>;
+  /** set to a time to throw a paper plane from the eyes */
+  plane: React.MutableRefObject<number | null>;
+  /** soft footsteps, off unless the visitor turns them on */
+  sound: React.MutableRefObject<boolean>;
+  /** a hop was asked for */
+  hop: React.MutableRefObject<boolean>;
 };
 
 
@@ -643,52 +659,91 @@ function Centre({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
 
 /* ---------------- the visitor, and the camera that follows ---------------- */
 
-function Visitor({ shared, motion, onPick }: {
-  shared: Shared; motion: "full" | "static"; onPick: (p: Pick) => void;
+const EYE = 3.2;              // eye height in first person
+let audio: AudioContext | null = null;
+
+/** A soft paper footstep: a short burst of filtered noise. Only ever played
+ *  after the visitor turns sound on, which is itself a gesture. */
+function footstep() {
+  try {
+    audio ??= new AudioContext();
+    const n = audio.sampleRate * 0.06;
+    const buf = audio.createBuffer(1, n, audio.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+    const src = audio.createBufferSource(); src.buffer = buf;
+    const f = audio.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 900;
+    const g = audio.createGain(); g.gain.value = 0.18;
+    src.connect(f).connect(g).connect(audio.destination); src.start();
+  } catch { /* no audio, no steps */ }
+}
+
+function Visitor({ w, shared, motion, onPick }: {
+  w: WorldData; shared: Shared; motion: "full" | "static"; onPick: (p: Pick) => void;
 }) {
   const body = useRef<THREE.Group>(null);
-  const { camera } = useThree();
+  const walker = useRef<THREE.Group>(null);
+  const { camera, scene } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const vel = useRef(new THREE.Vector3());
+  const vy = useRef(0);                     // vertical speed, for hops
   const faceRef = useRef("front");
   const [face, setFace] = useState("front");
-  const look = useRef(new THREE.Vector3(0, 2, 0));
+  const lookAt = useRef(new THREE.Vector3(0, 2, 0));
+  const phase = useRef(0);                  // walking phase, for head bob and steps
+  const lastStep = useRef(0);
+  const colliders = useMemo(() => buildColliders(w), [w]);
+  const targets = useMemo(() => buildTargets(w), [w]);
+  const aimAt = useRef(0);
 
   useEffect(() => {
     const typing = (e: KeyboardEvent) => (e.target as HTMLElement)?.closest?.("input, textarea");
     const d = (e: KeyboardEvent) => {
       if (typing(e)) return;
-      keys.current[e.key.toLowerCase()] = true;
-      if (e.key.startsWith("Arrow")) e.preventDefault();
+      const k = e.key.toLowerCase();
+      keys.current[k] = true;
+      if (e.key.startsWith("Arrow") || e.key === " ") e.preventDefault();
+      if (k === " ") shared.hop.current = true;
+      if (k === "f" && shared.view.current === "fpv") shared.plane.current = performance.now();
     };
     const u = (e: KeyboardEvent) => (keys.current[e.key.toLowerCase()] = false);
     window.addEventListener("keydown", d);
     window.addEventListener("keyup", u);
     return () => { window.removeEventListener("keydown", d); window.removeEventListener("keyup", u); };
-  }, []);
+  }, [shared]);
 
   useFrame((_, dt) => {
     dt = Math.min(dt, 0.05);
     const k = keys.current, pos = shared.me.current, target = shared.target;
+    const fpv = shared.view.current === "fpv";
+
+    // ease the camera between above and the eyes (a cut for reduced motion)
+    const want = fpv ? 1 : 0;
+    shared.blend.current = motion === "static" ? want
+      : THREE.MathUtils.damp(shared.blend.current, want, 3.2, dt);
+    const t = shared.blend.current;
+
     const step = new THREE.Vector3();
-    // Q and E turn, R and F tilt; walking is relative to where the camera faces
     const turn = (k["q"] ? 1 : 0) - (k["e"] ? 1 : 0);
-    const tilt = (k["r"] ? 1 : 0) - (k["f"] ? 1 : 0);
+    const tilt = (k["r"] ? 1 : 0) - (!fpv && k["f"] ? 1 : 0);
     if (turn) shared.yaw.current += turn * dt * 1.6;
-    if (tilt) shared.pitch.current = THREE.MathUtils.clamp(shared.pitch.current + tilt * dt * 0.9, 0.12, 1.45);
+    if (tilt && !fpv) shared.pitch.current = THREE.MathUtils.clamp(shared.pitch.current + tilt * dt * 0.9, 0.12, 1.45);
     if (k["w"] || k["arrowup"]) step.z -= 1;
     if (k["s"] || k["arrowdown"]) step.z += 1;
     if (k["a"] || k["arrowleft"]) step.x -= 1;
     if (k["d"] || k["arrowright"]) step.x += 1;
-    const speed = 18 * Math.max(1, shared.far.current * 0.8);
+    step.x += shared.stick.current.x; step.z += shared.stick.current.y;   // the phone joystick
+    const run = k["shift"] ? 2 : 1;
+    const speed = fpv ? 9 * run : 18 * Math.max(1, shared.far.current * 0.8) * run;
 
-    if (step.lengthSq() > 0) {
+    if (step.lengthSq() > 0.01) {
+      const mag = Math.min(1, step.length());
       step.applyAxisAngle(new THREE.Vector3(0, 1, 0), shared.yaw.current);
       target.current = null;
-      step.normalize().multiplyScalar(speed);
+      step.normalize().multiplyScalar(speed * mag);
     } else if (target.current) {
-      const to = target.current.clone().setY(0).sub(pos);
-      if (motion === "static") { pos.copy(target.current).setY(0); target.current = null; }
+      const to = target.current.clone().setY(0).sub(pos.clone().setY(0));
+      if (motion === "static") { pos.x = target.current.x; pos.z = target.current.z; target.current = null; }
       else if (to.length() < 0.6) target.current = null;
       // long journeys go faster, so nobody waits to cross the map
       else step.copy(to.normalize().multiplyScalar(Math.max(speed, Math.min(70, to.length() * 1.6))));
@@ -696,16 +751,37 @@ function Visitor({ shared, motion, onPick }: {
 
     if (motion === "static") vel.current.copy(step);
     else vel.current.lerp(step, Math.min(1, dt * 7));
-    pos.addScaledVector(vel.current, dt);
+    pos.x += vel.current.x * dt; pos.z += vel.current.z * dt;
     const r = Math.hypot(pos.x, pos.z), lim = 150;
-    if (r > lim) pos.multiplyScalar(lim / r);
+    if (r > lim) { pos.x *= lim / r; pos.z *= lim / r; }
+
+    // hop, gravity, standing on whatever is underfoot, sliding round the rest
+    if (shared.hop.current) {
+      shared.hop.current = false;
+      if (pos.y <= groundAt(colliders, pos.x, pos.z, pos.y) + 0.05) vy.current = 9.5;
+    }
+    vy.current -= 26 * dt;
+    pos.y += vy.current * dt;
+    const floor = groundAt(colliders, pos.x, pos.z, pos.y);
+    if (pos.y < floor) { pos.y = floor; vy.current = 0; }
+    slide(colliders, pos, pos.y);
+
+    // the walking rhythm: head bob in first person, and the steps if sound is on
+    const v = Math.hypot(vel.current.x, vel.current.z);
+    if (v > 0.5 && pos.y <= floor + 0.05) {
+      phase.current += dt * Math.min(v, 18) * 0.9;
+      if (shared.sound.current && fpv && phase.current - lastStep.current > Math.PI) {
+        lastStep.current = phase.current; footstep();
+      }
+    }
 
     if (body.current) {
-      body.current.position.copy(pos);
-      const v = vel.current.length();
-      body.current.position.y = motion === "static" ? 0 : Math.abs(Math.sin(performance.now() / 110)) * Math.min(v, 20) * 0.016;
+      body.current.position.set(pos.x, pos.y, pos.z);
+      if (walker.current) {
+        walker.current.visible = t < 0.6;   // in first person, you are me
+        walker.current.position.y = motion === "static" ? 0 : Math.abs(Math.sin(performance.now() / 110)) * Math.min(v, 20) * 0.016;
+      }
       if (v > 0.4) {
-        // which drawing to show depends on heading relative to the camera
         let a = Math.atan2(vel.current.x, vel.current.z) - shared.yaw.current;
         a = Math.atan2(Math.sin(a), Math.cos(a));
         const next = a > 2.0 || a < -2.0 ? "back" : a > 0.6 ? "right" : a < -0.6 ? "left" : "front";
@@ -713,23 +789,53 @@ function Visitor({ shared, motion, onPick }: {
       }
     }
 
+    // where each view would put the camera, mixed by the blend
     const narrow = window.innerWidth < 720 ? 1.55 : 1;
     const f = shared.far.current * narrow;
     const R = 63 * f, yw = shared.yaw.current, pt = shared.pitch.current;
-    const want = new THREE.Vector3(
-      pos.x + R * Math.sin(yw) * Math.cos(pt), R * Math.sin(pt), pos.z + R * Math.cos(yw) * Math.cos(pt));
-    if (motion === "static") { camera.position.copy(want); look.current.set(pos.x, 2, pos.z); }
+    const tpCam = new THREE.Vector3(
+      pos.x + R * Math.sin(yw) * Math.cos(pt), pos.y + R * Math.sin(pt), pos.z + R * Math.cos(yw) * Math.cos(pt));
+    const tpLook = new THREE.Vector3(pos.x, pos.y + 2, pos.z);
+    const bob = motion === "static" ? 0 : Math.sin(phase.current * 2) * 0.09 * Math.min(1, v / 6);
+    const fpCam = new THREE.Vector3(pos.x, pos.y + EYE + bob, pos.z);
+    const lk = shared.look.current;
+    const fpLook = fpCam.clone().add(new THREE.Vector3(-Math.sin(yw) * Math.cos(lk), Math.sin(lk), -Math.cos(yw) * Math.cos(lk)).multiplyScalar(10));
+    const camWant = tpCam.lerp(fpCam, t);
+    const lookWant = tpLook.lerp(fpLook, t);
+    if (motion === "static" || t > 0.98) { camera.position.copy(camWant); lookAt.current.copy(lookWant); }
     else {
-      camera.position.lerp(want, Math.min(1, dt * 2.6));
-      look.current.lerp(new THREE.Vector3(pos.x, 2, pos.z), Math.min(1, dt * 4));
+      camera.position.lerp(camWant, Math.min(1, dt * (2.6 + t * 12)));
+      lookAt.current.lerp(lookWant, Math.min(1, dt * (4 + t * 12)));
     }
-    camera.lookAt(look.current);
+    camera.lookAt(lookAt.current);
+
+    // fog closes in at eye level, for depth and to spare the far draw calls
+    const fog = scene.fog as THREE.Fog | null;
+    if (fog) { fog.near = THREE.MathUtils.lerp(170, 55, t); fog.far = THREE.MathUtils.lerp(420, 230, t); }
+
+    // the crosshair: the target nearest the centre of view, within reach
+    if (fpv && performance.now() - aimAt.current > 90) {
+      aimAt.current = performance.now();
+      const eye = camera.position, dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      let best: AimTarget | null = null, bestScore = Infinity;
+      for (const o of targets) {
+        const to = new THREE.Vector3(o.x - eye.x, o.y - eye.y, o.z - eye.z);
+        const d = to.length();
+        if (d > 48 || d < 1) continue;
+        const off = to.normalize().angleTo(dir);
+        const allow = Math.atan2(o.size, d) + 0.03;
+        if (off < allow && off * d < bestScore) { bestScore = off * d; best = o; }
+      }
+      shared.aim.current = best;
+    } else if (!fpv) shared.aim.current = null;
   });
 
   return (
     <group ref={body}>
       {/* the walker is drawn as me: click me to read more about me */}
       <group
+        ref={walker}
         onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); }}
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "")}
@@ -740,6 +846,44 @@ function Visitor({ shared, motion, onPick }: {
         <circleGeometry args={[0.95, 20]} />
         <meshBasicMaterial color={INK} transparent opacity={0.12} />
       </mesh>
+    </group>
+  );
+}
+
+/* ---------------- a paper plane thrown from the eyes ---------------- */
+
+function ThrownPlane({ shared, onPick }: { shared: Shared; onPick: (p: Pick) => void }) {
+  const ref = useRef<THREE.Group>(null);
+  const flight = useRef<{ t0: number; from: THREE.Vector3; dir: THREE.Vector3 } | null>(null);
+  const { camera } = useThree();
+  const shape = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0.9); s.lineTo(0.6, -0.6); s.lineTo(0, -0.25); s.lineTo(-0.6, -0.6); s.lineTo(0, 0.9);
+    return new THREE.ShapeGeometry(s);
+  }, []);
+  useFrame(() => {
+    const g = ref.current;
+    if (!g) return;
+    if (shared.plane.current && !flight.current) {
+      const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+      flight.current = { t0: shared.plane.current, from: camera.position.clone().add(dir.clone().multiplyScalar(1.5)).add(new THREE.Vector3(0, -0.6, 0)), dir };
+      shared.plane.current = null;
+    }
+    const fl = flight.current;
+    g.visible = !!fl;
+    if (!fl) return;
+    const s = (performance.now() - fl.t0) / 1000;
+    // a glide: forward, a little lift, then a sink, with a gentle roll
+    g.position.copy(fl.from).addScaledVector(fl.dir, s * 14).add(new THREE.Vector3(0, Math.sin(s * 2.4) * 0.8 - s * s * 0.8, 0));
+    g.lookAt(g.position.clone().add(fl.dir));
+    g.rotateX(-Math.PI / 2);
+    g.rotateY(Math.sin(s * 3) * 0.4);
+    if (s > 1.7) { flight.current = null; onPick({ kind: "reach" }); }
+  });
+  return (
+    <group ref={ref} visible={false}>
+      <mesh geometry={shape}><meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} /></mesh>
+      <lineSegments><edgesGeometry args={[shape]} /><lineBasicMaterial color={INK} /></lineSegments>
     </group>
   );
 }
@@ -808,12 +952,13 @@ export default function Scene({ w, shared, pick, onPick, motion }: {
       <Years w={w} />
       <Roads w={w} />
       <PlazaMarks w={w} onPick={onPick} />
-      <WorldMarks w={w} spots={spots} onPick={onPick} />
+      <WorldMarks w={w} spots={spots} onPick={onPick} blend={shared.blend} />
+      <Sky />
       <Gates w={w} shared={shared} onPick={onPick} />
       <Plinths w={w} lit={litP} onPick={onPick} onHover={setHoverP} />
       <SkillStones w={w} shared={shared} spots={spots} lit={litS} onPick={onPick} onHover={setHoverS} />
       <Threads w={w} pick={pick} spots={spots} />
-      <Suspense fallback={null}><Visitor shared={shared} motion={motion} onPick={onPick} /></Suspense>
+      <Suspense fallback={null}><Visitor w={w} shared={shared} motion={motion} onPick={onPick} /><ThrownPlane shared={shared} onPick={onPick} /></Suspense>
       <Suspense fallback={null}><Centre w={w} onPick={onPick} /></Suspense>
       <Suspense fallback={null}><ProjectArt w={w} shared={shared} lit={litP} onPick={onPick} /></Suspense>
       <Stories w={w} shared={shared} onPick={onPick} />

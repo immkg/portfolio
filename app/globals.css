@@ -754,3 +754,18 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
   background: #fff8d6; color: var(--ink); border: 1.5px dashed var(--ink); border-radius: 10px;
   padding: 0.45rem 0.7rem; animation: world-card-in 220ms ease-out;
 }
+
+/* ---------- first person ---------- */
+.fpv-cross { position: fixed; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; z-index: 12; pointer-events: none; border-radius: 50%; border: 2px solid rgba(27,36,55,.75); box-shadow: 0 0 0 2px rgba(255,255,255,.7); transition: transform 120ms ease, border-color 120ms ease; }
+.fpv-cross.is-on { transform: scale(1.5); border-color: #e0557f; }
+.fpv-hint { position: fixed; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); z-index: 12; pointer-events: none; background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0.25rem 0.85rem; font-size: 0.88rem; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 16px -10px rgba(27,36,55,.5); }
+.fpv-hint span { margin-left: 0.5rem; color: var(--ink-3); font-weight: 400; font-size: 0.78rem; }
+.fpv-stick { position: fixed; left: 1.2rem; bottom: 5rem; z-index: 14; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.55); border: 2px dashed var(--ink); touch-action: none; display: grid; place-items: center; }
+.fpv-knob { width: 48px; height: 48px; border-radius: 50%; background: var(--ink); box-shadow: 0 4px 10px rgba(27,36,55,.35); pointer-events: none; }
+.atlas-view { font-weight: 700 !important; background: var(--ink) !important; color: #fff !important; }
+.atlas-tools button, .atlas-tools a { white-space: nowrap; }
+@media (max-width: 720px) {
+  .atlas-tools { flex-wrap: wrap; justify-content: flex-end; gap: 0.3rem; left: auto; max-width: calc(100% - 1.2rem); }
+  .atlas-tools button, .atlas-tools a { font-size: 0.74rem; padding: 0.28rem 0.65rem; }
+  .fpv-stick { bottom: 6.2rem; }
+}

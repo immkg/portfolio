@@ -13,7 +13,9 @@ const INK = "#1b2437";
 export const CAMERA_YAW = Math.atan2(30, 44);   // the default view; painted words face it
 
 /** A drag turns the world; only a press that barely moved counts as a click. */
-export const tap = (e: ThreeEvent<MouseEvent>) => e.delta <= 6;
+export const tap = (e: ThreeEvent<MouseEvent>) =>
+  // with the mouse captured in first person, the crosshair picks, not the pointer
+  e.delta <= 6 && !(typeof document !== "undefined" && document.pointerLockElement);
 
 /* ---------------- paint ---------------- */
 
@@ -225,6 +227,7 @@ function Arches({ w }: { w: WorldData }) {
               <edgesGeometry args={[new THREE.BoxGeometry(0.6, 0.7, 5.4)]} />
               <lineBasicMaterial color={INK} />
             </lineSegments>
+            <Sign text={w.domains.find((o) => o.id === d)?.label ?? d} at={[0, 5.5, 0]} h={0.9} size={40} bg={PEN[d]} />
           </group>
         );
       })}
@@ -303,6 +306,65 @@ function Rose() {
   );
 }
 
+/* ---------------- upright signs for eye level ---------------- */
+
+/** Ground paint cannot be read from eye height, so first person gets the same
+ *  words standing up. Hidden from above, where the paint does the job. */
+function EyeLevelSigns({ w, spots, blend }: {
+  w: WorldData; spots: Record<string, [number, number]>; blend: React.MutableRefObject<number>;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(() => { if (ref.current) ref.current.visible = blend.current > 0.5; });
+  const groups = useMemo(() => {
+    const by: Record<string, { x: number; z: number; n: number; family: string }> = {};
+    w.skills.forEach((s) => {
+      const p = spots[s.slug]; if (!p) return;
+      const g = (by[s.group] ??= { x: 0, z: 0, n: 0, family: s.family });
+      g.x += p[0]; g.z += p[1]; g.n++;
+    });
+    return Object.entries(by).map(([name, g]) => {
+      const a = Math.atan2(g.z / g.n, g.x / g.n);
+      return { name, family: g.family, x: Math.cos(a) * 17, z: Math.sin(a) * 17 };
+    });
+  }, [w, spots]);
+  return (
+    <group ref={ref} visible={false}>
+      {/* high over the figure at the centre, so it reads from anywhere on the plaza */}
+      <Sign text="NOW" at={[0, 14.5, -4]} h={2.2} size={60} />
+      <Sign text="every ring out is a year further back" at={[0, 12.9, -4]} h={0.8} size={30} bg="#ffffff" ink={INK} />
+      {groups.map((g) => (
+        <group key={g.name}>
+          <mesh position={[g.x, 1.3, g.z]}><cylinderGeometry args={[0.08, 0.08, 2.6, 6]} /><meshBasicMaterial color={INK} /></mesh>
+          <Sign text={g.name} at={[g.x, 2.9, g.z]} h={0.7} size={34} bg={FAMILY_INK[g.family] ?? INK} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/* ---------------- a sky, for when you look up ---------------- */
+
+export function Sky() {
+  const geo = useMemo(() => {
+    const g = new THREE.SphereGeometry(600, 24, 12);
+    const c = new THREE.Color(), top = new THREE.Color("#c9dcf5"), low = new THREE.Color("#f4f7fd");
+    const cols: number[] = [];
+    const pos = g.getAttribute("position");
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i) / 600;
+      c.copy(low).lerp(top, THREE.MathUtils.clamp(y * 1.6, 0, 1));
+      cols.push(c.r, c.g, c.b);
+    }
+    g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
+    return g;
+  }, []);
+  return (
+    <mesh geometry={geo}>
+      <meshBasicMaterial vertexColors side={THREE.BackSide} fog={false} depthWrite={false} />
+    </mesh>
+  );
+}
+
 /* ---------------- 10. things that reward wandering ---------------- */
 
 function Egg({ at, children, note, onOpen }: {
@@ -365,8 +427,9 @@ function RestingPlane() {
 
 /* ---------------- everything together ---------------- */
 
-export function WorldMarks({ w, spots, onPick }: {
+export function WorldMarks({ w, spots, onPick, blend }: {
   w: WorldData; spots: Record<string, [number, number]>; onPick: (p: Pick) => void;
+  blend: React.MutableRefObject<number>;
 }) {
   const told = w.projects.filter((p) => p.tier === 3);
   const n = w.districts.length;
@@ -381,6 +444,7 @@ export function WorldMarks({ w, spots, onPick }: {
       <EdgeSign w={w} />
       <SkillGroupNames w={w} spots={spots} />
       <Rose />
+      <EyeLevelSigns w={w} spots={spots} blend={blend} />
       <Egg at={[-5.5, 0, 11.8]} note="You found the Ludo board. It is real: myludo.life, where one phone can seat several players.">
         <Ludo />
       </Egg>

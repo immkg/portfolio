@@ -14,6 +14,8 @@ export default function Minimap({ w, shared, pick, onPick }: {
 }) {
   const [open, setOpen] = useState(true);
   const me = useRef<SVGGElement>(null);
+  const cone = useRef<SVGPathElement>(null);
+  const arrow = useRef<SVGPathElement>(null);
   const R = w.rim + 14;
   const k = (SIZE / 2 - 4) / R;                 // world units to map pixels
   const at = (x: number, z: number) => [SIZE / 2 + x * k, SIZE / 2 + z * k];
@@ -31,6 +33,10 @@ export default function Minimap({ w, shared, pick, onPick }: {
       // the camera looks from behind the visitor, so it faces away from its offset
       const deg = (Math.atan2(-Math.cos(yaw), -Math.sin(yaw)) * 180) / Math.PI;
       me.current?.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${deg.toFixed(1)})`);
+      // first person shows what you can see; above, which way the camera faces
+      const fpv = shared.view.current === "fpv";
+      cone.current?.setAttribute("visibility", fpv ? "visible" : "hidden");
+      arrow.current?.setAttribute("visibility", fpv ? "hidden" : "visible");
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -90,7 +96,8 @@ export default function Minimap({ w, shared, pick, onPick }: {
         <text x={SIZE / 2} y={SIZE / 2 + 3} textAnchor="middle" fontSize="8" fill="#4e5a74">now</text>
         <text x={SIZE / 2} y={9} textAnchor="middle" fontSize="7" fill="#7b87a3">2019</text>
         <g ref={me} style={{ pointerEvents: "none" }}>
-          <path d="M0 -9 L5 3 L0 0 L-5 3 Z" fill="#1b2437" transform="rotate(90)" />
+          <path ref={cone} d="M0 0 L22 -11 A24 24 0 0 1 22 11 Z" fill="#e0557f" opacity={0.28} visibility="hidden" />
+          <path ref={arrow} d="M0 -9 L5 3 L0 0 L-5 3 Z" fill="#1b2437" transform="rotate(90)" />
           <circle r={2.4} fill="#e0557f" stroke="#fff" strokeWidth={1} />
         </g>
       </svg>

@@ -7,6 +7,7 @@ import * as THREE from "three";
 import Scene, { type Shared } from "./Scene";
 import Panel from "./Panel";
 import Minimap from "./Minimap";
+import Joystick from "./Joystick";
 import { BUILTIN_ALIASES, buildAliases, smartHit } from "@/lib/smartMatch";
 import {
   type WorldData, type Pick, ROOT, ICON, PEN, FAMILY_INK, dateAt, districtAt,
@@ -32,11 +33,75 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     far: { current: 1 },
     yaw: { current: Math.atan2(30, 44) },
     pitch: { current: 0.57 },
+    view: { current: "tp" },
+    blend: { current: 0 },
+    look: { current: 0 },
+    stick: { current: { x: 0, y: 0 } },
+    aim: { current: null },
+    plane: { current: null },
+    sound: { current: false },
+    hop: { current: false },
   }).current;
+
+  /* first person: walk in at the avatar's eyes, or fly back out */
+  const [view, setView] = useState<"tp" | "fpv">("tp");
+  const [aim, setAim] = useState<string | null>(null);
+  const [steps, setSteps] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const goView = useCallback((v: "tp" | "fpv") => {
+    shared.view.current = v;
+    shared.look.current = 0;
+    setView(v);
+    try { localStorage.setItem("atlas-view", v); } catch {}
+    const u = new URL(window.location.href);
+    if (v === "fpv") u.searchParams.set("view", "fpv"); else u.searchParams.delete("view");
+    window.history.replaceState(null, "", u.toString());
+    if (v === "tp" && document.pointerLockElement) document.exitPointerLock();
+  }, [shared]);
+  useEffect(() => {
+    let v: string | null = new URLSearchParams(window.location.search).get("view");
+    if (!v) { try { v = localStorage.getItem("atlas-view"); } catch {} }
+    if (v === "fpv") goView("fpv");
+  }, [goView]);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest?.("input, textarea")) return;
+      if (e.key.toLowerCase() === "v") goView(shared.view.current === "fpv" ? "tp" : "fpv");
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [goView, shared]);
+  /* the crosshair's hint, read from the rig a few times a second */
+  useEffect(() => {
+    if (view !== "fpv") { setAim(null); return; }
+    const t = setInterval(() => setAim(shared.aim.current?.label ?? null), 120);
+    return () => clearInterval(t);
+  }, [view, shared]);
+  /* captured mouse: movement turns the head; a click opens what the crosshair is on */
+  useEffect(() => {
+    const move = (e: MouseEvent) => { if (document.pointerLockElement) turn(e.movementX, e.movementY); };
+    const down = () => { if (document.pointerLockElement && shared.aim.current) onPickRef.current?.(shared.aim.current.pick); };
+    const change = () => setLocked(!!document.pointerLockElement);
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mousedown", down);
+    document.addEventListener("pointerlockchange", change);
+    return () => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mousedown", down);
+      document.removeEventListener("pointerlockchange", change);
+    };
+  }, [shared]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onPickRef = useRef<((p: Pick) => void) | null>(null);
 
   /* drag anywhere on the ground to turn (sideways) and tilt (up and down) */
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
   const turn = (dx: number, dy: number) => {
+    if (shared.view.current === "fpv") {
+      // in first person the head turns and nods
+      shared.yaw.current -= dx * 0.0035;
+      shared.look.current = THREE.MathUtils.clamp(shared.look.current - dy * 0.003, -0.9, 0.8);
+      return;
+    }
     shared.yaw.current -= dx * 0.006;
     shared.pitch.current = THREE.MathUtils.clamp(shared.pitch.current + dy * 0.004, 0.12, 1.45);
   };
@@ -61,6 +126,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   useEffect(() => {
     const k = (e: WheelEvent) => {
       if ((e.target as HTMLElement)?.closest?.(".atlas-panel, .atlas-search")) return;
+      if (shared.view.current === "fpv") return;
       shared.far.current = THREE.MathUtils.clamp(shared.far.current * (e.deltaY > 0 ? 1.1 : 0.9), 0.55, 3.4);
       setHigh(shared.far.current > 2);
     };
@@ -73,6 +139,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   /* picking something opens its read and walks you over to it */
   const onPick = useCallback((p: Pick) => {
     if (!w) return;
+    if (document.pointerLockElement) document.exitPointerLock();   // a card needs the mouse back
     setPick(p);
     setQ("");
     let to: [number, number] | null = null;
@@ -116,6 +183,8 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   /* the same forgiving search as the text pages: acronyms (adr, k8s), synonyms,
      typos, and each skill's other names. Skills first, best match first. */
   const aliases = useMemo(() => (w ? buildAliases({ skills: w.skills }) : {}), [w]);
+  onPickRef.current = onPick;
+
   const hits = useMemo<Hit[]>(() => {
     if (!w || q.trim().length < 2) return [];
     const nq = q.trim().toLowerCase();
@@ -144,7 +213,16 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     <div
       className="world atlas"
       onPointerDown={(e) => {
-        if ((e.target as HTMLElement).tagName === "CANVAS") drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+        const el = e.target as HTMLElement;
+        if (el.tagName !== "CANVAS") return;
+        // first person on a desktop: the first click captures the mouse to look around
+        if (shared.view.current === "fpv" && !touch && !document.pointerLockElement && e.pointerType === "mouse") {
+          try { (el.requestPointerLock as any)?.call(el); } catch {}
+          return;
+        }
+        // on a phone, the left half belongs to the joystick in first person
+        if (shared.view.current === "fpv" && touch && e.clientX < window.innerWidth * 0.45) return;
+        drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
       }}
       onPointerMove={(e) => {
         const d = drag.current;
@@ -203,7 +281,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
         </div>
       </header>
 
-      <Minimap w={w} shared={shared} pick={pick} onPick={onPick} />
+      {!(view === "fpv" && touch) && <Minimap w={w} shared={shared} pick={pick} onPick={onPick} />}
 
       <nav className="atlas-legend" aria-label="Districts">
         {w.districts.map((d) => {
@@ -218,20 +296,42 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
       </nav>
 
       <div className="atlas-tools">
-        <button onClick={() => { shared.far.current = high ? 1 : 2.9; setHigh(!high); }}>
-          {high ? "Back down" : "High ground"}
+        <button className="atlas-view" onClick={() => goView(view === "fpv" ? "tp" : "fpv")}>
+          {view === "fpv" ? "↑ Fly out" : "👁 Walk in"}
         </button>
-        <button aria-label="Turn left" onClick={() => (shared.yaw.current += 0.6)}>⟲</button>
-        <button aria-label="Turn right" onClick={() => (shared.yaw.current -= 0.6)}>⟳</button>
-        <button aria-label="Tilt" onClick={() => (shared.pitch.current = shared.pitch.current > 1 ? 0.35 : shared.pitch.current + 0.4)}>Tilt</button>
+        {view === "fpv" && touch && <button onClick={() => (shared.hop.current = true)}>Hop</button>}
+        {view === "fpv" && <button onClick={() => (shared.plane.current = performance.now())}>✈ Throw</button>}
+        {view === "fpv" && (
+          <button aria-pressed={steps} onClick={() => { shared.sound.current = !steps; setSteps(!steps); }}>
+            {steps ? "♪ Steps on" : "♪ Steps off"}
+          </button>
+        )}
+        {view === "tp" && <button onClick={() => { shared.far.current = high ? 1 : 2.9; setHigh(!high); }}>
+          {high ? "Back down" : "High ground"}
+        </button>}
+        {view === "tp" && <button aria-label="Turn left" onClick={() => (shared.yaw.current += 0.6)}>⟲</button>}
+        {view === "tp" && <button aria-label="Turn right" onClick={() => (shared.yaw.current -= 0.6)}>⟳</button>}
+        {view === "tp" && <button aria-label="Tilt" onClick={() => (shared.pitch.current = shared.pitch.current > 1 ? 0.35 : shared.pitch.current + 0.4)}>Tilt</button>}
         <button onClick={() => { shared.target.current = new THREE.Vector3(0, 0, 13); setPick(null); }}>Plaza</button>
         <a href={`${ROOT}/work/`}>Read as text</a>
       </div>
 
       <div className="world-help">
-        {touch ? "Tap to walk or open · drag to turn and tilt"
-               : "Click to walk or open · drag to turn and tilt · W A S D · Q E R F · scroll to rise"}
+        {view === "fpv"
+          ? (touch ? "Left thumb to walk · drag to look · tap to open"
+                   : locked ? "W A S D to walk · Shift to run · Space to hop · F to throw a plane · click to open · Esc to let go"
+                            : "Click to look around · V to fly out")
+          : (touch ? "Tap to walk or open · drag to turn and tilt"
+                   : "Click to walk or open · drag to turn and tilt · W A S D · Q E R F · scroll to rise · V to walk in")}
       </div>
+
+      {view === "fpv" && (
+        <>
+          <div className={`fpv-cross${aim ? " is-on" : ""}`} aria-hidden="true" />
+          {aim && <div className="fpv-hint">{aim}<span>{touch ? "tap it to open" : "click to open"}</span></div>}
+          {touch && <Joystick shared={shared} />}
+        </>
+      )}
 
       {pick && <Panel w={w} pick={pick} onPick={onPick} onClose={() => setPick(null)} />}
     </div>
