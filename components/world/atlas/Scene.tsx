@@ -485,6 +485,183 @@ function Threads({ w, pick, spots }: { w: WorldData; pick: Pick | null; spots: R
   );
 }
 
+/* ---------------- the plaza's markings ---------------- */
+
+/** Paint for the ground: lettering on a transparent canvas, sized to the text. */
+function paint(text: string, o: { size?: number; ink?: string; bg?: string; weight?: number; pad?: number } = {}) {
+  const size = o.size ?? 64, pad = o.pad ?? 18, weight = o.weight ?? 800;
+  const c = document.createElement("canvas");
+  const g0 = c.getContext("2d")!;
+  g0.font = `${weight} ${size}px system-ui, sans-serif`;
+  c.width = Math.ceil(g0.measureText(text).width + pad * 2);
+  c.height = Math.ceil(size * 1.5);
+  const g = c.getContext("2d")!;
+  if (o.bg) { g.fillStyle = o.bg; g.beginPath(); g.roundRect(0, 0, c.width, c.height, c.height / 2.4); g.fill(); }
+  g.font = `${weight} ${size}px system-ui, sans-serif`;
+  g.fillStyle = o.ink ?? INK; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(text, c.width / 2, c.height / 2 + size * 0.05);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return { tex: t, aspect: c.width / c.height };
+}
+
+/** A painted word lying flat on the ground; `h` is its height in world units. */
+function Decal({ text, h, at, yaw = 0, ...o }: {
+  text: string; h: number; at: [number, number, number]; yaw?: number;
+  size?: number; ink?: string; bg?: string; weight?: number;
+}) {
+  const { tex, aspect } = useMemo(() => paint(text, o), [text, o.ink, o.bg]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <group position={at} rotation={[0, yaw, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[h * aspect, h]} />
+        <meshBasicMaterial map={tex} transparent depthWrite={false} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+const CAMERA_YAW = Math.atan2(30, 44);   // the default view, so painted words face the visitor
+
+function PlazaMarks({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
+  const n = w.districts.length;
+  const sector = (Math.PI * 2) / n;
+  const label = Object.fromEntries(w.domains.map((d) => [d.id, d.label]));
+  const R0 = 7, R1 = w.plaza;               // spokes run from the centre's edge to the plaza's
+  const ringR = w.plaza - 2.6;
+
+  /* the ring road's centre line, as dashes in one draw call */
+  const dashes = useMemo(() => {
+    const pts: number[] = [];
+    const k = 64;
+    for (let i = 0; i < k; i += 1) {
+      const a0 = (i / k) * Math.PI * 2, a1 = a0 + (Math.PI * 2 / k) * 0.5;
+      for (const [a, b] of [[a0, a1]]) {
+        const steps = 4;
+        for (let j = 0; j < steps; j++) {
+          const x0 = a + (b - a) * (j / steps), x1 = a + (b - a) * ((j + 1) / steps);
+          pts.push(Math.cos(x0) * ringR, 0.04, Math.sin(x0) * ringR, Math.cos(x1) * ringR, 0.04, Math.sin(x1) * ringR);
+        }
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [ringR]);
+
+  return (
+    <group>
+      {/* 3. the ring road joining every road head */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}>
+        <ringGeometry args={[ringR - 1.3, ringR + 1.3, 96]} />
+        <meshBasicMaterial color="#dfe5f2" />
+      </mesh>
+      <lineSegments geometry={dashes}><lineBasicMaterial color="#ffffff" /></lineSegments>
+
+      {w.districts.map((d, i) => {
+        const a = (i + 0.5) * sector - Math.PI / 2;
+        const len = R1 - R0;
+        return (
+          <group key={d} rotation={[0, -a, 0]}>
+            {/* 1. a coloured spoke from me to the district's road */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[R0 + len / 2, 0.025, 0]}>
+              <planeGeometry args={[len, 2.2]} />
+              <meshBasicMaterial color={PEN[d]} transparent opacity={0.32} depthWrite={false} />
+            </mesh>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[R0 + len / 2, 0.028, 0]}>
+              <planeGeometry args={[len, 0.18]} />
+              <meshBasicMaterial color={PEN[d]} />
+            </mesh>
+            {/* 6. a zebra crossing where the spoke passes through the skill stones */}
+            {Array.from({ length: 6 }, (_, k) => (
+              <mesh key={k} rotation={[-Math.PI / 2, 0, 0]} position={[19.6 + k * 1.05, 0.032, 0]}>
+                <planeGeometry args={[0.5, 2.2]} />
+                <meshBasicMaterial color="#ffffff" />
+              </mesh>
+            ))}
+            {/* 2. the district's name painted on its spoke, reading outward */}
+            {/* turned to read upright from the default view; the arrow still points out */}
+            {Math.cos(a + CAMERA_YAW) >= 0
+              ? <Decal text={`${label[d] ?? d} →`} h={1.5} at={[13.2, 0.036, 0]} ink={INK} weight={800} />
+              : <Decal text={`← ${label[d] ?? d}`} h={1.5} at={[13.2, 0.036, 0]} yaw={Math.PI} ink={INK} weight={800} />}
+          </group>
+        );
+      })}
+
+      {/* 4. the plaza is now */}
+      <group rotation={[0, CAMERA_YAW, 0]}>
+        <Decal text="NOW" h={3.6} at={[0, 0.04, 6.4]} ink="#1b2437" weight={900} />
+        <Decal text="every ring out is a year further back" h={0.85} at={[0, 0.04, 8.7]} ink="#4e5a74" weight={600} />
+      </group>
+
+      {/* 7. where visitors begin */}
+      <group position={[0, 0, 13]} rotation={[0, CAMERA_YAW, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.045, 0]}>
+          <ringGeometry args={[1.5, 1.85, 40]} />
+          <meshBasicMaterial color="#e0557f" />
+        </mesh>
+        <Decal text="YOU ARE HERE · pick a road" h={0.75} at={[0, 0.05, 2.6]} ink="#ffffff" bg="#e0557f" weight={700} />
+      </group>
+
+      {/* 5. a fingerpost by me, one board per district; click one to go */}
+      <Fingerpost w={w} onPick={onPick} label={label} />
+    </group>
+  );
+}
+
+function Board({ text, back, color, onClick }: { text: string; back: string; color: string; onClick: () => void }) {
+  const front = useMemo(() => paint(text, { size: 44, ink: "#ffffff", weight: 700 }), [text]);
+  const rear = useMemo(() => paint(back, { size: 44, ink: "#ffffff", weight: 700 }), [back]);
+  const L = 3.6, H = 0.62;
+  const fit = (aspect: number) => Math.min(L - 0.3, (H - 0.12) * aspect);
+  return (
+    <group
+      onClick={(e) => { e.stopPropagation(); if (tap(e)) onClick(); }}
+      onPointerOver={() => (document.body.style.cursor = "pointer")}
+      onPointerOut={() => (document.body.style.cursor = "")}
+    >
+      <mesh position={[L / 2 + 0.15, 0, 0]}>
+        <boxGeometry args={[L, H, 0.09]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={[L / 2 + 0.15, 0, 0.05]}>
+        <planeGeometry args={[fit(front.aspect), fit(front.aspect) / front.aspect]} />
+        <meshBasicMaterial map={front.tex} transparent toneMapped={false} />
+      </mesh>
+      <mesh position={[L / 2 + 0.15, 0, -0.05]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[fit(rear.aspect), fit(rear.aspect) / rear.aspect]} />
+        <meshBasicMaterial map={rear.tex} transparent toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function Fingerpost({ w, onPick, label }: { w: WorldData; onPick: (p: Pick) => void; label: Record<string, string> }) {
+  const n = w.districts.length;
+  const sector = (Math.PI * 2) / n;
+  return (
+    <group position={[6.2, 0, 2.2]}>
+      <mesh position={[0, 3.4, 0]}>
+        <cylinderGeometry args={[0.16, 0.2, 6.8, 10]} />
+        <meshBasicMaterial color={INK} />
+      </mesh>
+      <mesh position={[0, 6.95, 0]}>
+        <sphereGeometry args={[0.28, 12, 10]} />
+        <meshBasicMaterial color="#e0557f" />
+      </mesh>
+      {w.districts.map((d, i) => {
+        const a = (i + 0.5) * sector - Math.PI / 2;
+        return (
+          <group key={d} position={[0, 6.3 - i * 0.74, 0]} rotation={[0, -a, 0]}>
+            <Board text={`${label[d] ?? d} →`} back={`← ${label[d] ?? d}`} color={PEN[d]}
+                   onClick={() => onPick({ kind: "district", id: d })} />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 /* ---------------- the person at the centre ---------------- */
 
 function Centre({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
@@ -671,6 +848,7 @@ export default function Scene({ w, shared, pick, onPick, motion }: {
       <Ground w={w} onMove={(p) => (shared.target.current = p)} />
       <Years w={w} />
       <Roads w={w} />
+      <PlazaMarks w={w} onPick={onPick} />
       <Gates w={w} shared={shared} onPick={onPick} />
       <Plinths w={w} lit={litP} onPick={onPick} onHover={setHoverP} />
       <SkillStones w={w} shared={shared} spots={spots} lit={litS} onPick={onPick} onHover={setHoverS} />
