@@ -803,3 +803,8 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
   .minimap-close { top: 0; right: 0; width: 20px; height: 20px; font-size: 0.75rem; }
   .fpv-stick { bottom: 4.2rem; }
 }
+@media (max-width: 720px) {
+  /* on a phone the card rises to 80% of the screen; the world peeks above it */
+  .atlas-panel { top: auto; bottom: 0.5rem; left: 0.5rem; right: 0.5rem; height: 80dvh; max-height: calc(100dvh - 1rem); z-index: 30; }
+  .atlas-close { top: 0.4rem; right: 0.4rem; font-size: 1.6rem; }
+}
