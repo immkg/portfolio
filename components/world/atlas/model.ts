@@ -9,10 +9,10 @@ export type Project = {
 };
 export type Skill = {
   slug: string; name: string; group: string; icon: string; family: string;
-  strength: number; line: string; projects: string[]; links: string[];
+  strength: number; line: string; projects: string[]; links: string[]; aliases?: string[];
 };
 export type Story = {
-  id: string; title: string; project: string; period: string;
+  id: string; title: string; project: string; period: string; family?: string;
   s: string; t: string; a: string; r: string;
 };
 export type Contact = {
@@ -134,3 +134,11 @@ export const yearOf = (iso: string | null) => (iso ? iso.slice(0, 4) : "");
 export const span = (p: Project) =>
   p.first ? `${yearOf(p.first)}${yearOf(p.last) !== yearOf(p.first) ? "–" + yearOf(p.last) : ""}` : "Undated";
 export const num = (n: number) => n.toLocaleString("en-GB");
+
+/* Present's story families, for colour and grouping */
+export const STORY_FAMILIES = [
+  { id: "decisions", label: "Decisions", ink: "#009bb4" },
+  { id: "incidents", label: "Incidents and lessons", ink: "#c26e12" },
+  { id: "people", label: "People", ink: "#c35f92" },
+  { id: "influence", label: "Influence", ink: "#9470cd" },
+];
