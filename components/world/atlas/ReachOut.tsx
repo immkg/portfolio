@@ -37,6 +37,7 @@ const Ico = ({ d }: { d: React.ReactNode }) => <svg viewBox="0 0 24 24" width="1
 export default function ReachOut({ name, title, c }: { name: string; title: string; c: Contact }) {
   const [msg, setMsg] = useState("");
   const [flying, setFlying] = useState(false);
+  const [landed, setLanded] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
   const [mode, setMode] = useState<"contact" | "site">("contact");
@@ -71,13 +72,19 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
   const mailto = (subject: string, body: string) =>
     `mailto:${c.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-  /* fold the note into a plane, let it fly, then hand it to the mail app */
+  /* fold the note into a plane and let it fly; then the visitor picks where it
+     lands. A mailto link alone does nothing for anyone without a desktop mail
+     app, so webmail and a plain copy are offered alongside it. */
+  const subject = "A paper plane from your portfolio";
+  const body = () => (msg.trim() || "Hi Mayank,") + "\n\n(thrown from your portfolio world)";
   const throwPlane = () => {
     setFlying(true);
-    const body = (msg.trim() || "Hi Mayank,") + "\n\n(thrown from your portfolio world)";
-    setTimeout(() => { window.location.href = mailto("A paper plane from your portfolio", body); }, 750);
-    setTimeout(() => { setFlying(false); flash("Plane thrown. Your mail app has it."); }, 1300);
+    setTimeout(() => { setFlying(false); setLanded(true); }, 900);
   };
+  const gmail = () =>
+    `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body())}`;
+  const outlook = () =>
+    `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(c.email)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body())}`;
 
   return (
     <section className="plane">
@@ -88,7 +95,20 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
         value={msg} onChange={(e) => setMsg(e.target.value)} rows={3}
         placeholder="Hi Mayank, we're hiring a Head of Engineering…" aria-label="Your message"
       />
-      <button className="plane-throw" onClick={throwPlane} disabled={flying}>Fold &amp; throw ✈</button>
+      {!landed ? (
+        <button className="plane-throw" onClick={throwPlane} disabled={flying}>Fold &amp; throw ✈</button>
+      ) : (
+        <div className="plane-land" role="group" aria-label="Where should it land?">
+          <p>It&rsquo;s airborne. Where should it land?</p>
+          <div>
+            <a href={gmail()} target="_blank" rel="noopener" onClick={() => flash("Landing in Gmail…")}>Gmail</a>
+            <a href={outlook()} target="_blank" rel="noopener" onClick={() => flash("Landing in Outlook…")}>Outlook</a>
+            <a href={mailto(subject, body())} onClick={() => flash("Opening your mail app…")}>Mail app</a>
+            <button onClick={() => copy(`To: ${c.email}\nSubject: ${subject}\n\n${body()}`, "Copied. Paste it into any mail.")}>Copy</button>
+          </div>
+          <button className="plane-again" onClick={() => setLanded(false)}>← fold it again</button>
+        </div>
+      )}
 
       <div className="plane-tiles">
         <a href={mailto("Hello from your portfolio", "Hi Mayank,\n\n")}><b>✉</b>Email</a>

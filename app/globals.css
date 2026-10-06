@@ -742,3 +742,10 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
 .pg-plane-small { flex-basis: 100%; text-align: right; color: #7b87a3; font-size: 0.82rem; }
 .pg-plane-actions .pg-plane-small a { border: 0; padding: 0; text-decoration: underline; }
 @media (max-width: 720px) { .pg-plane-small { text-align: left; } }
+.plane-land { margin-top: 0.6rem; animation: world-card-in 220ms ease-out; }
+.plane-land p { margin: 0 auto 0.5rem !important; font-weight: 600; font-size: 0.92rem !important; }
+.plane-land > div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.35rem; }
+.plane-land a, .plane-land > div button { font: inherit; font-size: 0.85rem; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; color: #fff; background: var(--ink); border: 0; border-radius: 999px; padding: 0.5rem 0.3rem; }
+.plane-land > div button { background: #fff; color: var(--ink); border: 1px solid var(--ink); }
+.plane-again { margin-top: 0.5rem; font: inherit; font-size: 0.8rem; color: var(--ink-3); background: none; border: 0; cursor: pointer; }
+@media (max-width: 420px) { .plane-land > div { grid-template-columns: repeat(2, 1fr); } }
