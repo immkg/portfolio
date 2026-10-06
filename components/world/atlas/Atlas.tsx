@@ -173,8 +173,15 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
             {dLabel ?? (where.when === "Now" ? "The plaza" : "Between districts")}
           </span>
         </div>
-        <button className="atlas-reach" onClick={() => onPick({ kind: "reach" })}>
-          <span aria-hidden="true">✈</span> Send me a paper plane
+        <button className="atlas-reach" onClick={() => onPick({ kind: "reach" })} aria-label="Say hi: send me a paper plane">
+          <svg className="atlas-reach-trail" viewBox="0 0 40 20" width="40" height="20" aria-hidden="true">
+            <path d="M1 16 C10 18, 16 4, 26 9 S36 12, 39 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2 3" strokeLinecap="round" />
+          </svg>
+          <svg className="atlas-reach-plane" viewBox="0 0 64 48" width="26" height="20" aria-hidden="true">
+            <path d="M2 22 L62 2 L40 46 L30 30 Z" fill="#fff" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
+            <path d="M62 2 L30 30 L26 44 L34 33" fill="#dcdefb" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
+          </svg>
+          <span>Say hi</span>
         </button>
         <div className="atlas-search">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a project, skill or story"

@@ -501,13 +501,27 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
 
 /* ---------- reach out: a paper plane ---------- */
 .atlas-reach {
-  font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
-  margin-left: auto; color: #fff; background: var(--ink); border: 1px solid var(--ink);
-  border-radius: 999px; padding: 0.45rem 1rem;
+  display: inline-flex; align-items: center; gap: 0.1rem; margin-left: auto; cursor: pointer;
+  font: inherit; font-size: 0.92rem; font-weight: 600; color: var(--ink); white-space: nowrap;
+  background: var(--paper-2); border: 1.5px dashed var(--ink); border-radius: 999px;
+  padding: 0.25rem 0.9rem 0.25rem 0.5rem; box-shadow: 0 6px 16px -10px rgba(27,36,55,.5);
+  transition: transform 160ms ease, box-shadow 160ms ease;
 }
+.atlas-reach:hover { transform: translateY(-2px) rotate(-1.5deg); box-shadow: 0 10px 20px -10px rgba(27,36,55,.55); }
+.atlas-reach-trail { color: var(--ink-3); margin-right: -6px; }
+.atlas-reach-trail path { animation: reach-trail 1.2s linear infinite; }
+.atlas-reach-plane { animation: reach-bob 2.4s ease-in-out infinite; transform-origin: 50% 50%; }
+.atlas-reach:hover .atlas-reach-plane { animation: reach-loop 0.9s ease-in-out; }
+.atlas-reach span { margin-left: 0.35rem; }
+@keyframes reach-trail { to { stroke-dashoffset: -10; } }
+@keyframes reach-bob { 0%,100% { transform: translateY(1px) rotate(-6deg); } 50% { transform: translateY(-3px) rotate(4deg); } }
+@keyframes reach-loop {
+  0% { transform: translate(0,0) rotate(0); } 25% { transform: translate(6px,-8px) rotate(-90deg); }
+  50% { transform: translate(0,-14px) rotate(-180deg); } 75% { transform: translate(-6px,-8px) rotate(-270deg); }
+  100% { transform: translate(0,0) rotate(-360deg); }
+}
+@media (prefers-reduced-motion: reduce) { .atlas-reach-plane, .atlas-reach-trail path { animation: none !important; } }
 .atlas-reach + .atlas-search { margin-left: 0; }
-.atlas-reach span { display: inline-block; transition: transform 300ms ease; }
-.atlas-reach:hover span { transform: translate(3px, -3px) rotate(-8deg); }
 
 .plane-who { margin: 0.2rem 2rem 0.9rem 0; }
 .plane-who b { display: block; font-size: var(--step-1); font-weight: 600; }
