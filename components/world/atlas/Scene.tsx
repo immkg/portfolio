@@ -172,6 +172,66 @@ function Years({ w }: { w: WorldData }) {
   );
 }
 
+/* ---------------- a road out to each district, with its years marked ---------------- */
+
+/** One small drawn label per year, shared by every road. */
+function yearTexture(text: string) {
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 64;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#1b2437";
+  g.beginPath(); g.roundRect(4, 8, 120, 48, 10); g.fill();
+  g.fillStyle = "#ffffff";
+  g.font = "600 34px system-ui, sans-serif";
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(text, 64, 33);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function Roads({ w }: { w: WorldData }) {
+  const n = w.districts.length;
+  const sector = (Math.PI * 2) / n;
+  const tex = useMemo(() => Object.fromEntries(w.rings.map((y) => [y.year, yearTexture(String(y.year))])), [w]);
+  const len = w.rim + 8 - w.plaza;
+  return (
+    <group>
+      {w.districts.map((d, i) => {
+        const a = (i + 0.5) * sector - Math.PI / 2;
+        return (
+          <group key={d} rotation={[0, -a, 0]}>
+            {/* the road itself, a pale strip edged in the district's pen */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[w.plaza + len / 2, 0.025, 0]}>
+              <planeGeometry args={[len, 2.6]} />
+              <meshBasicMaterial color="#ffffff" />
+            </mesh>
+            {[-1.4, 1.4].map((o) => (
+              <mesh key={o} rotation={[-Math.PI / 2, 0, 0]} position={[w.plaza + len / 2, 0.03, o]}>
+                <planeGeometry args={[len, 0.22]} />
+                <meshBasicMaterial color={PEN[d]} />
+              </mesh>
+            ))}
+            {/* chevrons pointing outward: further along is further back in time */}
+            {Array.from({ length: Math.floor(len / 9) }, (_, k) => (
+              <mesh key={k} rotation={[-Math.PI / 2, 0, -Math.PI / 2]} position={[w.plaza + 6 + k * 9, 0.035, 0]}>
+                <circleGeometry args={[0.55, 3]} />
+                <meshBasicMaterial color={PEN[d]} transparent opacity={0.55} />
+              </mesh>
+            ))}
+            {/* the year, where the road crosses each ring */}
+            {w.rings.map((y) => (
+              <sprite key={y.year} position={[y.r, 1.1, 2.4]} scale={[2.6, 1.3, 1]}>
+                <spriteMaterial map={tex[y.year]} toneMapped={false} />
+              </sprite>
+            ))}
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 /* ---------------- the district gates at the plaza's edge ---------------- */
 
 function Gates({ w, shared, onPick }: { w: WorldData; shared: Shared; onPick: (p: Pick) => void }) {
@@ -601,6 +661,7 @@ export default function Scene({ w, shared, pick, onPick, motion }: {
       <fog attach="fog" args={["#f4f7fd", 170, 420]} />
       <Ground w={w} onMove={(p) => (shared.target.current = p)} />
       <Years w={w} />
+      <Roads w={w} />
       <Gates w={w} shared={shared} onPick={onPick} />
       <Plinths w={w} lit={litP} onPick={onPick} onHover={setHoverP} />
       <SkillStones w={w} shared={shared} spots={spots} lit={litS} onPick={onPick} onHover={setHoverS} />

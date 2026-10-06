@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import Scene, { type Shared } from "./Scene";
 import Panel from "./Panel";
+import Minimap from "./Minimap";
 import {
   type WorldData, type Pick, ROOT, ICON, PEN, FAMILY_INK, dateAt, districtAt,
   districtSpot, skillSpots, plinth, span,
@@ -153,6 +154,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
             {dLabel ?? (where.when === "Now" ? "The plaza" : "Between districts")}
           </span>
         </div>
+        <button className="atlas-reach" onClick={() => onPick({ kind: "about" })}>Reach out · Résumé</button>
         <div className="atlas-search">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a project, skill or story"
                  aria-label="Find a project, skill or story" />
@@ -168,6 +170,8 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
           )}
         </div>
       </header>
+
+      <Minimap w={w} shared={shared} pick={pick} onPick={onPick} />
 
       <nav className="atlas-legend" aria-label="Districts">
         {w.districts.map((d) => {

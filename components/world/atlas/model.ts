@@ -15,8 +15,13 @@ export type Story = {
   id: string; title: string; project: string; period: string;
   s: string; t: string; a: string; r: string;
 };
+export type Contact = {
+  email: string; linkedin: string; github: string; site: string;
+  resume: string; city?: string; open_to?: string;
+};
 export type About = {
   intro: string[];
+  contact?: Contact;
   built: { name: string; url: string; line: string }[];
   links: { label: string; url: string }[];
 };

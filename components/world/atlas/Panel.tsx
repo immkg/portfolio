@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import ReachOut from "./ReachOut";
 import {
   type WorldData, type Pick, ROOT, ICON, PEN, FAMILY_INK, KIND, span,
 } from "./model";
@@ -73,10 +74,20 @@ function ProjectCard({ w, slug, onPick }: { w: WorldData; slug: string; onPick: 
   if (!p) return null;
   const dom = w.domains.find((x) => x.id === p.domain);
   const stories = w.stories.filter((s) => s.project === slug);
+  // walking the road: the same district, newest nearest the plaza
+  const road = w.projects.filter((x) => x.domain === p.domain)
+    .sort((a, b) => (b.last ?? "").localeCompare(a.last ?? ""));
+  const at = road.findIndex((x) => x.slug === slug);
+  const newer = road[at - 1], older = road[at + 1];
   return (
     <>
       <Head icon={`project-${slug}`} kicker={`${dom?.label} · ${span(p)}`} title={p.label} pen={PEN[p.domain]} />
       {p.line && <p className="atlas-lede">{p.line}</p>}
+      <nav className="atlas-road" aria-label={`Along the ${dom?.label} road`}>
+        <button disabled={!newer} onClick={() => newer && onPick({ kind: "project", slug: newer.slug })}>◂ Newer</button>
+        <span>{at + 1} of {road.length} on this road</span>
+        <button disabled={!older} onClick={() => older && onPick({ kind: "project", slug: older.slug })}>Older ▸</button>
+      </nav>
       <p className="atlas-note">{KIND[p.kind] ?? p.kind}</p>
       {p.did.length > 0 && (
         <section><h3>What I did</h3>
@@ -148,6 +159,7 @@ function AboutCard({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   return (
     <>
       <Head icon="mark" kicker={w.profile.headline} title={w.profile.name} pen="#1b2437" />
+      {w.about?.contact && <ReachOut name={w.profile.name} title={w.profile.headline.split("|")[0].trim()} c={w.about.contact} />}
       {(w.about?.intro ?? [w.profile.line]).map((x, i) => <p key={i} className={i ? "" : "atlas-lede"}>{x}</p>)}
       <section><h3>Timeline</h3>
         {w.roles.map((r) => (
