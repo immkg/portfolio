@@ -209,7 +209,7 @@ function Plinths({ w, lit, onPick, onHover }: {
     const src = e.getAttribute("position").array as Float32Array;
     const out: number[] = [];
     w.projects.forEach((p) => {
-      const h = plinth(p), s = p.case ? 3.4 : 2.4;
+      const h = plinth(p), s = p.tier === 3 ? 3.4 : 2.4;
       for (let i = 0; i < src.length; i += 3)
         out.push(p.x + src[i] * s, src[i + 1] * h + h / 2, p.z + src[i + 2] * s);
     });
@@ -222,7 +222,7 @@ function Plinths({ w, lit, onPick, onHover }: {
     if (!ref.current) return;
     const m = new THREE.Object3D(), c = new THREE.Color();
     w.projects.forEach((p, i) => {
-      const h = plinth(p), s = p.case ? 3.4 : 2.4;
+      const h = plinth(p), s = p.tier === 3 ? 3.4 : 2.4;
       m.position.set(p.x, h / 2, p.z);
       m.scale.set(s, h, s);
       m.updateMatrix();
@@ -230,7 +230,7 @@ function Plinths({ w, lit, onPick, onHover }: {
       const on = !lit || lit.has(p.slug);
       // with nothing picked, case studies wear the full pen; once something is
       // picked, everything it touches does, and the rest goes pale
-      ref.current!.setColorAt(i, c.set(!on ? "#f1f3f8" : lit || p.case ? PEN[p.domain] : FILL[p.domain]));
+      ref.current!.setColorAt(i, c.set(!on ? "#f1f3f8" : lit || p.tier === 3 ? PEN[p.domain] : FILL[p.domain]));
     });
     ref.current.instanceMatrix.needsUpdate = true;
     if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
@@ -276,8 +276,8 @@ function ProjectArt({ w, shared, lit, onPick }: {
             </group>
           );
         return (
-          <Icon key={p.slug} name={`project-${p.slug}`} at={[p.x, h + (p.case ? 2.4 : 1.7), p.z]}
-                size={p.case ? 4.2 : 2.9} me={shared.me} onClick={go} dim={dim} />
+          <Icon key={p.slug} name={`project-${p.slug}`} at={[p.x, h + (p.tier === 3 ? 2.4 : 1.7), p.z]}
+                size={p.tier === 3 ? 4.2 : 2.9} me={shared.me} onClick={go} dim={dim} />
         );
       })}
     </group>

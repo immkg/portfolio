@@ -4,39 +4,27 @@
 
 export type Project = {
   slug: string; label: string; line: string; domain: string; kind: string;
-  case: boolean; first: string | null; last: string | null;
-  mine: number; share: number; skills: string[]; stories: string[];
-  diagrams: number; x: number; z: number; span: number; mid: string | null;
+  tier: number; first: string | null; last: string | null;
+  skills: string[]; stories: string[]; x: number; z: number;
 };
 export type Skill = {
   slug: string; name: string; group: string; icon: string; family: string;
-  strength: number; commits: number; summary: string;
-  projects: string[]; links: string[];
+  strength: number; line: string; projects: string[]; links: string[];
 };
-export type Story = {
-  id: string; title: string; project: string; period: string;
-  situation: string; task: string; action: string; result: string; reflection: string;
-};
-export type Claim = { id: string; text: string; project: string; period: string };
+export type Story = { id: string; title: string; project: string; period: string; line: string };
 export type Role = {
-  id: string; title: string; employer: string; dates: string; intro: string;
+  id: string; title: string; employer: string; dates: string;
   r_start: number; r_end: number;
 };
 export type WorldData = {
   built_at: string; now: string; oldest: string;
   rings: { year: number; r: number }[];
   plaza: number; rim: number;
-  profile: { name: string; headline: string; summary: string };
-  roles: Role[]; bullets: string[];
+  profile: { name: string; headline: string; line: string };
+  roles: Role[];
   domains: { id: string; label: string; count: number }[];
   districts: string[];
-  projects: Project[]; skills: Skill[]; stories: Story[]; claims: Claim[];
-};
-export type ProjectDetail = {
-  slug: string;
-  sections: { title: string; paragraphs: string[] }[];
-  diagrams: { title: string; mermaid: string }[];
-  keywords: string[];
+  projects: Project[]; skills: Skill[]; stories: Story[];
 };
 
 /** What the visitor has opened. */
@@ -124,8 +112,8 @@ export function skillSpots(skills: Skill[]): Record<string, [number, number]> {
   return out;
 }
 
-/** Plinth height from the share of the activity that was mine. */
-export const plinth = (p: Project) => 0.6 + Math.sqrt(p.mine / 11400) * 9;
+/** Plinth height from a coarse tier; no activity count is published. */
+export const plinth = (p: Project) => [0, 1.2, 3.4, 7][p.tier] ?? 1.2;
 
 export const yearOf = (iso: string | null) => (iso ? iso.slice(0, 4) : "");
 export const span = (p: Project) =>

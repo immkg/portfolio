@@ -1,54 +1,68 @@
 import type { Metadata } from "next";
-import CaseList from "@/components/CaseList";
-import Legend from "@/components/Legend";
-import { constellation, DOMAIN } from "@/lib/data";
+import { world } from "@/lib/data";
+import { span } from "@/components/world/atlas/model";
 
 export const metadata: Metadata = {
-  title: "Work",
-  description:
-    "Nine projects written up — document AI, conversational AI, search, hospitality " +
-    "and the internal platform — out of 77 on the record.",
+  title: "Skills and work",
+  description: "The world as plain text: skills, the timeline, and the projects by domain.",
 };
 
 export default function Work() {
-  const c = constellation();
-  const rest = c.nodes
-    .filter((n) => !n.case)
-    .sort((a, b) => a.label.localeCompare(b.label));
-
+  const w = world();
+  const groups = [...new Set(w.skills.map((s) => s.group))];
   return (
     <main>
       <section className="band">
         <div className="sheet datum">
-          <h1 style={{ fontSize: "var(--step-3)" }}>Work</h1>
-          <p className="lede">
-            Nine projects are written up. They are the ones where I can say
-            something specific about what was decided and what changed.
-          </p>
-          <div style={{ marginTop: "1.8rem" }}>
-            <CaseList />
+          <h1 style={{ fontSize: "var(--step-3)" }}>Skills and work</h1>
+          <p className="lede">{w.profile.line}</p>
+        </div>
+      </section>
+
+      <section className="band">
+        <div className="sheet datum">
+          <h2>Timeline</h2>
+          <div className="eras" style={{ marginTop: "1.2rem" }}>
+            {w.roles.map((r) => (
+              <div className="era" key={r.id}>
+                <div className="era-when">{r.dates}</div>
+                <div><div className="era-what">{r.title}</div><div className="era-org">{r.employer}</div></div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       <section className="band">
         <div className="sheet datum">
-          <h2>The other {rest.length}</h2>
-          <p className="lede">
-            Counted in the numbers, not written up. Mostly smaller engagements and
-            internal systems.
-          </p>
-          <div style={{ marginTop: "1.5rem" }}>
-            <Legend />
-          </div>
-          <div className="rest" style={{ marginTop: "1.5rem" }}>
-            {rest.map((n) => (
-              <span key={n.slug} data-domain={n.domain}>
-                <span style={{ color: "var(--pen)" }}>— </span>
-                {n.label}
-              </span>
-            ))}
-          </div>
+          <h2>Skills</h2>
+          {groups.map((g) => (
+            <div key={g} style={{ marginTop: "1.2rem" }}>
+              <h3 style={{ fontSize: "var(--step-0)", color: "var(--ink-3)" }}>{g}</h3>
+              <p style={{ maxWidth: "none" }}>
+                {w.skills.filter((s) => s.group === g).map((s) => s.name).join(" · ")}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="band">
+        <div className="sheet datum">
+          <h2>Projects by domain</h2>
+          {w.domains.map((d) => (
+            <div key={d.id} data-domain={d.id} style={{ marginTop: "1.4rem" }}>
+              <h3 style={{ fontSize: "var(--step-1)" }}>{d.label}</h3>
+              <div className="rest" style={{ marginTop: "0.5rem" }}>
+                {w.projects
+                  .filter((p) => p.domain === d.id)
+                  .sort((a, b) => (b.last ?? "").localeCompare(a.last ?? ""))
+                  .map((p) => (
+                    <span key={p.slug}>{p.label} <span style={{ color: "var(--ink-3)" }}>{span(p)}</span></span>
+                  ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </main>

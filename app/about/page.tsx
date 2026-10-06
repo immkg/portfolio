@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "About",
@@ -28,8 +27,7 @@ export default function About() {
           <p>
             I like platforms more than apps — shared models, an SDK, the unglamorous
             layer that decides whether the next ten features are pleasant or painful
-            to build. And I like writing the architecture down, which is how{" "}
-            <Link href="/">438 diagrams</Link> happened.
+            to build. And I like writing the architecture down.
           </p>
           <p>
             Python and TypeScript, some Dart when something wants to be an app, and

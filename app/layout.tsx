@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo } from "next/font/google";
 import Link from "next/link";
-import { constellation } from "@/lib/data";
+import { world } from "@/lib/data";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -14,12 +14,11 @@ const archivo = Archivo({
 export const metadata: Metadata = {
   metadataBase: new URL("https://immkg.github.io/portfolio/"),
   title: {
-    default: "Mayank Kumar Gupta — engineering, plotted",
+    default: "Mayank Kumar Gupta — a world of the work",
     template: "%s — Mayank Kumar Gupta",
   },
   description:
-    "Seven years running the engineering function of a SaaS and AI product company, " +
-    "drawn as a plot of 77 projects: what was built, who it was for, and what was decided.",
+    "Engineering leader: skills, projects and a timeline, laid out as a world you can walk.",
   openGraph: {
     type: "website",
     siteName: "Mayank Kumar Gupta",
@@ -29,14 +28,12 @@ export const metadata: Metadata = {
 };
 
 const SHEETS = [
-  { href: "/plot/", label: "Plot" },
-  { href: "/work/", label: "Work" },
-  { href: "/journey/", label: "Journey" },
+  { href: "/work/", label: "Skills and work" },
   { href: "/about/", label: "About" },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const c = constellation();
+  const w = world();
   return (
     <html lang="en" className={archivo.variable}>
       <body>
@@ -56,9 +53,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="band">
           <div className="sheet datum">
             <p style={{ color: "var(--ink-3)", fontSize: "var(--step--1)", maxWidth: "58ch" }}>
-              Generated from a record of the work itself — tickets, commits, reviews
-              and the diagrams drawn at the time. Clients are described by what they
-              do rather than named, and figures are rounded down.
+              Generated from a record of the work itself. Clients are described by
+              what they do rather than named.
             </p>
             <p>
               <a href="mailto:mayankgupta690@gmail.com">mayankgupta690@gmail.com</a>
@@ -71,10 +67,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </footer>
         <aside className="title-block" aria-hidden="true">
           <div>
-            <b>{c.totals.projects}</b> projects
+            <b>{w.projects.length}</b> projects
           </div>
           <div>
-            revised <b>{c.built_at}</b>
+            revised <b>{w.built_at}</b>
           </div>
         </aside>
       </body>

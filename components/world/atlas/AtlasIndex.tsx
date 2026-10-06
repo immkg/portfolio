@@ -12,7 +12,7 @@ export default function AtlasIndex() {
     <div className="visually-hidden">
       <h1>{w.profile.name}</h1>
       <p>{w.profile.headline}</p>
-      <p>{w.profile.summary}</p>
+      <p>{w.profile.line}</p>
       <h2>Roles</h2>
       <ul>{w.roles.map((r) => <li key={r.id}>{r.title}, {r.employer}, {r.dates}</li>)}</ul>
       <h2>Projects</h2>
@@ -21,7 +21,7 @@ export default function AtlasIndex() {
       <p>{w.skills.map((s) => s.name).join(", ")}</p>
       <h2>Stories</h2>
       <ul>{w.stories.map((s) => <li key={s.id}>{s.title}</li>)}</ul>
-      <p><Link href="/work/">The work as pages</Link></p>
+      <p><Link href="/work/">Skills and work as text</Link></p>
     </div>
   );
 }

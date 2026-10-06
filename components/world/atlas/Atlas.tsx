@@ -98,7 +98,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
                       icon: s.icon, pen: FAMILY_INK[s.family] });
     });
     w.stories.forEach((s) => {
-      if ((s.title + " " + s.situation).toLowerCase().includes(t))
+      if ((s.title + " " + s.line).toLowerCase().includes(t))
         out.push({ pick: { kind: "story", id: s.id }, label: s.title, sub: "Story", icon: `story-${s.id}`, pen: "#1b2437" });
     });
     return out.slice(0, 9);
@@ -164,7 +164,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
           {high ? "Back down" : "High ground"}
         </button>
         <button onClick={() => { shared.target.current = new THREE.Vector3(0, 0, 13); setPick(null); }}>Plaza</button>
-        <a href={`${ROOT}/work/`}>Read it as pages</a>
+        <a href={`${ROOT}/work/`}>Read as text</a>
       </div>
 
       <div className="world-help">
