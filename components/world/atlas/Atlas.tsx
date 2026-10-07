@@ -9,6 +9,7 @@ import Panel from "./Panel";
 import Minimap from "./Minimap";
 import Joystick from "./Joystick";
 import { BUILTIN_ALIASES, buildAliases, smartHit } from "@/lib/smartMatch";
+import { track } from "@/lib/analytics";
 import {
   type WorldData, type Pick, ROOT, ICON, PEN, FAMILY_INK, dateAt, districtAt,
   districtSpot, skillSpots, plinth, span,
@@ -53,6 +54,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   const goView = useCallback((v: "tp" | "fpv") => {
     shared.view.current = v;
     shared.look.current = 0;
+    track("world_view", { view: v === "fpv" ? "first_person" : "above" });
     setView(v);
     try { localStorage.setItem("atlas-view", v); } catch {}
     const u = new URL(window.location.href);
@@ -145,6 +147,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     if (document.pointerLockElement) document.exitPointerLock();   // a card needs the mouse back
     setQ("");
     shared.arrive.current = null;
+    track("world_open", { kind: p.kind, id: "slug" in p ? p.slug : "id" in p ? p.id : p.kind });
     let to: [number, number] | null = null;
     if (p.kind === "project") {
       const x = w.projects.find((o) => o.slug === p.slug);
@@ -280,7 +283,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
           {hits.length > 0 && (
             <ul>
               {hits.map((h, i) => (
-                <li key={i}><button onClick={() => onPick(h.pick)}>
+                <li key={i}><button onClick={() => { track("world_search", { q, hit: h.label }); onPick(h.pick); }}>
                   <img src={ICON(h.icon)} alt="" width={28} height={28} />
                   <span style={{ ["--pen" as any]: h.pen }}><b>{h.label}</b><small>{h.sub}</small></span>
                 </button></li>

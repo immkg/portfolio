@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Archivo } from "next/font/google";
 import Link from "next/link";
 import { world } from "@/lib/data";
+import Analytics from "@/components/Analytics";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={archivo.variable}>
       <body>
+        <Analytics />
         <nav className="index" aria-label="Sheets">
           <div className="index-inner">
             <Link href="/" className="index-name">

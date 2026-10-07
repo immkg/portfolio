@@ -7,6 +7,7 @@ import {
   type WorldData, type Skill, ICON, PEN, FAMILY_INK, STORY_FAMILIES, span,
 } from "@/components/world/atlas/model";
 import { InWorld, ProjectTile } from "./bits";
+import { track } from "@/lib/analytics";
 
 type Kind = "all" | "skills" | "projects" | "stories";
 const KINDS: { id: Kind; label: string }[] = [
@@ -67,7 +68,8 @@ export default function Explorer({ w }: { w: WorldData }) {
   }, [q, kind, dom]);
   useEffect(() => {                       // debounce typing into the filter
     const t = setTimeout(() => setQ(typed), 140);
-    return () => clearTimeout(t);
+    const said = setTimeout(() => { if (typed.trim().length > 1) track("explore_search", { q: typed.trim() }); }, 1200);
+    return () => { clearTimeout(t); clearTimeout(said); };
   }, [typed]);
 
   const aliases = useMemo(() => buildAliases({ skills: w.skills }), [w]);

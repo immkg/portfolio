@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Contact } from "./model";
+import { track } from "@/lib/analytics";
 
 /** A vCard: scanning the QR, or opening the file, offers to save the contact. */
 function vcard(name: string, title: string, c: Contact) {
@@ -78,6 +79,7 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
   const subject = "A paper plane from your portfolio";
   const body = () => (msg.trim() || "Hi Mayank,") + "\n\n(thrown from your portfolio world)";
   const throwPlane = () => {
+    track("reach_plane_thrown", { wrote: msg.trim().length > 0 });
     setFlying(true);
     setTimeout(() => { setFlying(false); setLanded(true); }, 900);
   };
@@ -101,31 +103,31 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
         <div className="plane-land" role="group" aria-label="Where should it land?">
           <p>It&rsquo;s airborne. Where should it land?</p>
           <div>
-            <a href={gmail()} target="_blank" rel="noopener" onClick={() => flash("Landing in Gmail…")}>Gmail</a>
-            <a href={outlook()} target="_blank" rel="noopener" onClick={() => flash("Landing in Outlook…")}>Outlook</a>
-            <a href={mailto(subject, body())} onClick={() => flash("Opening your mail app…")}>Mail app</a>
-            <button onClick={() => copy(`To: ${c.email}\nSubject: ${subject}\n\n${body()}`, "Copied. Paste it into any mail.")}>Copy</button>
+            <a href={gmail()} target="_blank" rel="noopener" onClick={() => { track("reach_sent", { via: "gmail" }); flash("Landing in Gmail…"); }}>Gmail</a>
+            <a href={outlook()} target="_blank" rel="noopener" onClick={() => { track("reach_sent", { via: "outlook" }); flash("Landing in Outlook…"); }}>Outlook</a>
+            <a href={mailto(subject, body())} onClick={() => { track("reach_sent", { via: "mail_app" }); flash("Opening your mail app…"); }}>Mail app</a>
+            <button onClick={() => { track("reach_sent", { via: "copy" }); copy(`To: ${c.email}\nSubject: ${subject}\n\n${body()}`, "Copied. Paste it into any mail."); }}>Copy</button>
           </div>
           <button className="plane-again" onClick={() => setLanded(false)}>← fold it again</button>
         </div>
       )}
 
       <div className="plane-tiles">
-        <a href={mailto("Hello from your portfolio", "Hi Mayank,\n\n")}><b>✉</b>Email</a>
-        {tel && <a href={`tel:${tel}`}><b>☎</b>Call</a>}
-        {c.whatsapp && <a href={c.whatsapp} target="_blank" rel="noopener"><b>✆</b>WhatsApp</a>}
-        <a href={c.resume} download><b>▤</b>Résumé</a>
+        <a href={mailto("Hello from your portfolio", "Hi Mayank,\n\n")} onClick={() => track("reach_contact", { via: "email" })}><b>✉</b>Email</a>
+        {tel && <a href={`tel:${tel}`} onClick={() => track("reach_contact", { via: "call" })}><b>☎</b>Call</a>}
+        {c.whatsapp && <a href={c.whatsapp} target="_blank" rel="noopener" onClick={() => track("reach_contact", { via: "whatsapp" })}><b>✆</b>WhatsApp</a>}
+        <a href={c.resume} download onClick={() => track("resume_download", { from: "world" })}><b>▤</b>Résumé</a>
       </div>
 
       <div className="plane-icons">
-        <a href={c.linkedin} target="_blank" rel="noopener" title="LinkedIn" aria-label="LinkedIn"><Ico d={I.in} /></a>
-        <a href={c.github} target="_blank" rel="noopener" title="GitHub" aria-label="GitHub"><Ico d={I.gh} /></a>
+        <a href={c.linkedin} target="_blank" rel="noopener" title="LinkedIn" aria-label="LinkedIn" onClick={() => track("reach_contact", { via: "linkedin" })}><Ico d={I.in} /></a>
+        <a href={c.github} target="_blank" rel="noopener" title="GitHub" aria-label="GitHub" onClick={() => track("reach_contact", { via: "github" })}><Ico d={I.gh} /></a>
         <button onClick={() => copy(c.email, "Email copied")} title="Copy email" aria-label="Copy email"><Ico d={I.copy} /></button>
-        <button onClick={saveCard} title="Save my contact" aria-label="Save my contact"><Ico d={I.card} /></button>
+        <button onClick={() => { track("reach_contact", { via: "vcard" }); saveCard(); }} title="Save my contact" aria-label="Save my contact"><Ico d={I.card} /></button>
         <button onClick={share} title="Share this world" aria-label="Share this world"><Ico d={I.share} /></button>
       </div>
 
-      <details className="plane-qr" onToggle={(e) => setQrOpen((e.target as HTMLDetailsElement).open)}>
+      <details className="plane-qr" onToggle={(e) => { const o = (e.target as HTMLDetailsElement).open; setQrOpen(o); if (o) track("reach_contact", { via: "qr" }); }}>
         <summary>Scan from your phone</summary>
         <div>
           {qr ? <img src={qr} alt={mode === "contact" ? "QR code that saves my contact" : "QR code that opens this world"} width={140} height={140} /> : <div className="plane-qr-wait" />}
