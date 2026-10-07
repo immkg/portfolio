@@ -23,7 +23,7 @@ export default function AtlasMount() {
     return (
       <div className="world-decline">
         <p>{state}</p>
-        <p><a href="/portfolio/work/">Read the work as pages instead</a></p>
+        <p><a href="/work/">Read the work as pages instead</a></p>
       </div>
     );
   return <Atlas motion={state} />;

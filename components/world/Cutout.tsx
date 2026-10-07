@@ -4,7 +4,7 @@ import { useTexture } from "@react-three/drei";
 import { useMemo } from "react";
 import * as THREE from "three";
 
-export const BASE = "/portfolio/world";
+export const BASE = "/world";
 
 /** A flat plane carrying generated paper art.
  *

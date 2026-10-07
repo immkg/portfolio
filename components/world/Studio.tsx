@@ -246,7 +246,7 @@ export default function Studio({ things }: { things: Thing[] }) {
         <Director target={picked} />
       </Canvas>
 
-      <a className="world-leave" href="/portfolio/about/">Read it as a page</a>
+      <a className="world-leave" href="/about/">Read it as a page</a>
       <div className="world-help">{help}</div>
 
       {picked && (

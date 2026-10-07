@@ -20,7 +20,7 @@ export default function StudioMount({ things }: { things: Thing[] }) {
     return (
       <div className="world-decline">
         <p>{why}</p>
-        <p><a href="/portfolio/about/">Read it as a page instead</a></p>
+        <p><a href="/about/">Read it as a page instead</a></p>
       </div>
     );
   }

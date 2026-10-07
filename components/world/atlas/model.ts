@@ -50,7 +50,7 @@ export type Pick =
   | { kind: "reach" }
   | { kind: "district"; id: string };
 
-export const ROOT = "/portfolio";
+export const ROOT = "";
 export const ICON = (name: string) => `${ROOT}/world/icons/${name}.webp`;
 
 /* the seven pens, one per kind of problem */

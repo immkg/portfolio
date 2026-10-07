@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { world } from "@/lib/data";
 
-const BASE = "https://immkg.github.io/portfolio";
+const BASE = "https://immkg.github.io";
 
 export const dynamic = "force-static";
 

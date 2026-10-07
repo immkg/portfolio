@@ -2,12 +2,12 @@ import Link from "next/link";
 import type { WorldData, Project, Skill, Story } from "@/components/world/atlas/model";
 import { ICON, PEN, FILL, FAMILY_INK, span } from "@/components/world/atlas/model";
 
-export const SITE = "https://immkg.github.io/portfolio";
+export const SITE = "https://immkg.github.io";
 
 /** A link that opens the world on this exact thing. */
 export function InWorld({ p, label = "View in the world" }: { p: string; label?: string }) {
   return (
-    <a className="pg-world" href={`/portfolio/?p=${p}`}>
+    <a className="pg-world" href={`/?p=${p}`}>
       <span aria-hidden="true">◈</span> {label}
     </a>
   );
@@ -79,7 +79,7 @@ export function PaperPlane({ w }: { w: WorldData }) {
         {tel && <a href={`tel:${tel}`}>☎ Call</a>}
         {c.whatsapp && <a href={c.whatsapp} rel="noopener">✆ WhatsApp</a>}
         <span className="pg-plane-small">
-          <a href={c.linkedin} rel="noopener">LinkedIn</a> · <a href={c.github} rel="noopener">GitHub</a> · <a href="/portfolio/?p=reach">QR in the world</a>
+          <a href={c.linkedin} rel="noopener">LinkedIn</a> · <a href={c.github} rel="noopener">GitHub</a> · <a href="/?p=reach">QR in the world</a>
         </span>
       </div>
     </section>

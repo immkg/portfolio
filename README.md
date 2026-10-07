@@ -1,6 +1,6 @@
 # Portfolio
 
-Seven years of engineering, plotted — [immkg.github.io/portfolio](https://immkg.github.io/portfolio)
+Seven years of engineering, plotted — [immkg.github.io](https://immkg.github.io)
 
 Not a CV page. The site is generated from a private record of the work itself
 (tickets, commits, reviews, chat and documents, attributed per project and per
