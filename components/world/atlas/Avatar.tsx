@@ -1,8 +1,8 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { BASE } from "../Cutout";
 import { tap } from "./Marks";
@@ -40,58 +40,82 @@ export const newAnim = (): Anim => ({
 
 const INK = "#1b2437";
 const W = 2.6;               // the walker's drawn width; the art is twice as tall
-const FACES: Face[] = ["front", "back", "left", "right"];
-/* pose drawings that exist in public/world; add a name here when its file lands */
-const POSES: Pose[] = [];
+/* The puppet: the turnaround drawings cut into body, arms and legs by
+   relaunch/scripts/cut_puppet.py, every layer on the same 384x768 frame and
+   hinged where a paper split-pin would be. The side view is drawn facing
+   left; facing right is the same puppet turned over. */
+const FRAME = [384, 768];
+const PX = W / FRAME[0];                         // frame pixels to world units
+const PIVOT = {
+  front: { arm_l: [100, 300], arm_r: [284, 300], leg_l: [150, 492], leg_r: [234, 492] },
+  side: { arm: [220, 288], leg: [200, 466] },
+} as const;
+const HAND = [195, 505] as const;                         // the side arm's hand, for props
+const LAYERS = ["front-body", "front-arm_l", "front-arm_r", "front-leg_l", "front-leg_r",
+  "back-body", "back-arm_l", "back-arm_r", "back-leg_l", "back-leg_r",
+  "side-body", "side-arm", "side-leg"];
 
-/** Pose art is optional: until a file exists the walker acts it out with
- *  the four turnaround drawings instead. */
-function usePoseArt() {
-  const [art, setArt] = useState<Partial<Record<Pose, THREE.Texture>>>({});
-  useEffect(() => {
-    let live = true;
-    const loader = new THREE.TextureLoader();
-    POSES.forEach((p) =>
-      loader.load(`${BASE}/walker-${p}.webp`, (t) => {
-        t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-        if (live) setArt((a) => ({ ...a, [p]: t }));
-      }, undefined, () => {}));
-    return () => { live = false; };
-  }, []);
-  return art;
-}
+type View = "front" | "back" | "side";
+type Act = { pose?: Pose; face?: Face };
 
-/** What to show when idle: glance about, wave, sip a coffee, and after a
- *  while sit down with the laptop. Returns a pose, a face, or nothing. */
-function idleAct(idle: number, art: Partial<Record<Pose, THREE.Texture>>): { pose?: Pose; face?: Face; wiggle?: boolean } {
+/** Idle, I glance about, wave, sip a coffee, and after a while sit down with
+ *  the laptop. */
+function idleAct(idle: number): Act {
   if (idle < 6) return {};
-  if (idle > 20 && art.sit) return { pose: "sit" };
-  const c = (idle - 6) % 11;
+  if (idle > 22) return { pose: "sit" };
+  const c = (idle - 6) % 12;
   if (c < 0.9) return { face: "left" };
   if (c < 1.8) return { face: "right" };
-  if (c > 4 && c < 5.5) return art.wave ? { pose: "wave" } : { wiggle: true };
-  if (c > 7.5 && c < 10 && art.coffee) return { pose: "coffee" };
+  if (c > 3.5 && c < 5.3) return { pose: "wave" };
+  if (c > 7.5 && c < 10.5) return { pose: "coffee" };
   return {};
+}
+
+/* a frame-pixel point to the puppet's own units: x across, y up from the feet */
+const at = (x: number, y: number) => [(x - FRAME[0] / 2) * PX, (FRAME[1] - y) * PX] as const;
+
+/** One drawn layer, hung from its hinge so turning the group swings it. */
+function Part({ tex, pivot, z, tint, partRef }: {
+  tex: THREE.Texture; pivot: readonly [number, number]; z: number; tint?: string;
+  partRef?: React.Ref<THREE.Group>;
+}) {
+  const [px, py] = at(...pivot);
+  const [cx, cy] = at(FRAME[0] / 2, FRAME[1] / 2);
+  return (
+    <group ref={partRef} position={[px, py, z]}>
+      <mesh position={[cx - px, cy - py, 0]}>
+        <planeGeometry args={[W, W * 2]} />
+        <meshBasicMaterial map={tex} alphaTest={0.5} toneMapped={false} side={THREE.DoubleSide} color={tint ?? "#ffffff"} />
+      </mesh>
+    </group>
+  );
 }
 
 export function Avatar({ me, anim, motion, onPick }: {
   me: React.MutableRefObject<THREE.Vector3>; anim: React.MutableRefObject<Anim>;
   motion: "full" | "static"; onPick: (p: Pick) => void;
 }) {
-  const faceTex = useTexture(FACES.map((f) => `${BASE}/walker-${f}.webp`));
-  useMemo(() => faceTex.forEach((t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; }), [faceTex]);
-  const poses = usePoseArt();
-  const posesRef = useRef(poses);
-  posesRef.current = poses;
+  const texs = useTexture([...LAYERS.map((n) => `${BASE}/puppet/${n}.webp`), `${BASE}/laptop.webp`, `${BASE}/mug.webp`]);
+  useMemo(() => texs.forEach((t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; }), [texs]);
+  const T = Object.fromEntries(LAYERS.map((n, i) => [n, texs[i]])) as Record<string, THREE.Texture>;
+  const laptop = texs[LAYERS.length], mug = texs[LAYERS.length + 1];
 
-  const root = useRef<THREE.Group>(null);
-  const sprite = useRef<THREE.Sprite>(null);
-  const mat = useRef<THREE.SpriteMaterial>(null);
+  const root = useRef<THREE.Group>(null);       // at my feet, turned to the camera
+  const rig = useRef<THREE.Group>(null);        // lean, squash, flip, sit
+  const views = { front: useRef<THREE.Group>(null), back: useRef<THREE.Group>(null), side: useRef<THREE.Group>(null) };
+  const limbs = {
+    front: { al: useRef<THREE.Group>(null), ar: useRef<THREE.Group>(null), ll: useRef<THREE.Group>(null), lr: useRef<THREE.Group>(null) },
+    back: { al: useRef<THREE.Group>(null), ar: useRef<THREE.Group>(null), ll: useRef<THREE.Group>(null), lr: useRef<THREE.Group>(null) },
+    side: { arm: useRef<THREE.Group>(null), near: useRef<THREE.Group>(null), far: useRef<THREE.Group>(null) },
+  };
+  const lap = useRef<THREE.Mesh>(null);
+  const cup = useRef<THREE.Mesh>(null);
   const shadow = useRef<THREE.Mesh>(null);
   const plane = useRef<THREE.Group>(null);
   const puff = useRef<THREE.Mesh>(null);
-  const shown = useRef<THREE.Texture | null>(null);
+  const shownView = useRef<string>("front");
   const flipAt = useRef(0);
+  const { camera } = useThree();
 
   const planeShape = useMemo(() => {
     const s = new THREE.Shape();
@@ -102,85 +126,135 @@ export function Avatar({ me, anim, motion, onPick }: {
   useFrame(() => {
     const a = anim.current, p = me.current, now = performance.now() / 1000;
     const still = motion === "static";
-    if (!root.current || !sprite.current || !mat.current) return;
-    root.current.position.set(p.x, 0, p.z);
+    if (!root.current || !rig.current) return;
+    root.current.position.set(p.x, p.y, p.z);
+    // stand upright and turn to face the camera round the vertical only
+    root.current.rotation.set(0, Math.atan2(camera.position.x - p.x, camera.position.z - p.z), 0);
 
-    // which drawing: a pose if one is playing and drawn, else the way I face
-    const art = posesRef.current;
-    let pose: Pose | undefined, face = a.face, mirror = false, wiggle = false;
-    if (a.flying) pose = art.sit ? "sit" : undefined, face = art.sit ? face : "front";
-    else if (a.present && now < a.present.until) {
-      if (art.point) { pose = "point"; mirror = a.present.mirror; }
-      else face = a.present.mirror ? "left" : "right";
-    } else if (!still && a.v < 0.4) {
-      const act = idleAct(a.idle, art);
-      if (act.pose) pose = act.pose;
-      if (act.face) face = act.face;
-      wiggle = !!act.wiggle;
-    }
-    const tex = pose && art[pose] ? art[pose]! : faceTex[FACES.indexOf(face)];
-    if (tex !== shown.current) {
-      // a paper turn: the cut-out folds edge-on and opens again as the new drawing
-      if (shown.current && !still) flipAt.current = now;
-      shown.current = tex; mat.current.map = tex; mat.current.needsUpdate = true;
-    }
+    // what I'm doing: riding, presenting, idling, or walking the way I face
+    let pose: Pose | undefined, face = a.face, mirror = false;
+    if (a.flying) pose = "sit";
+    else if (a.present && now < a.present.until) { pose = "point"; mirror = a.present.mirror; }
+    else if (!still && a.v < 0.4) { const act = idleAct(a.idle); pose = act.pose; face = act.face ?? face; }
+    if (pose === "point") face = mirror ? "left" : "right";
+    if (pose === "sit" || pose === "coffee") face = face === "right" ? "right" : "left";
+    if (pose === "wave") face = "front";
+    const view: View = face === "front" ? "front" : face === "back" ? "back" : "side";
+    const flipX = face === "right" ? -1 : 1;     // the side art faces left
 
-    // the walk: a hop per step, a squash as the foot lands, a lean into turns
-    const walking = a.v > 0.4 && !a.flying;
-    const k = Math.min(1, a.v / 10);
-    const step = walking && !still ? Math.abs(Math.sin(a.phase)) : 0;
+    const key = view + flipX;
+    if (key !== shownView.current) { if (!still) flipAt.current = now; shownView.current = key; }
+    (["front", "back", "side"] as View[]).forEach((v) => { const g = views[v].current; if (g) g.visible = v === view; });
+
+    // the walk: legs and arms swing from their pins, a bob per step, a squash
+    const walking = a.v > 0.4 && !a.flying && !still;
+    const k = Math.min(1, a.v / 9);
+    const sw = walking ? Math.sin(a.phase) : 0;
+    const step = walking ? Math.abs(Math.sin(a.phase)) : 0;
     const flip = still ? 1 : Math.min(1, (now - flipAt.current) / 0.16);
     const breathe = !walking && !a.flying && !still ? Math.sin(now * 2.3) * 0.012 : 0;
-    const sx = (1 + (1 - step) * 0.035 * k) * (0.15 + 0.85 * flip) * (mirror ? -1 : 1);
-    const sy = 1 - (1 - step) * 0.05 * k + breathe;
-    const ratio = (tex.image as any)?.height / (tex.image as any)?.width || 2;
-    const seated = pose === "sit" ? 0.92 : 1;
-    sprite.current.scale.set(W * sx * seated, W * ratio * sy * seated, 1);
-    sprite.current.position.y = p.y + (a.flying ? 0.1 : step * 0.32 * k);
-    mat.current.rotation = still ? 0
-      : -THREE.MathUtils.clamp(a.side * 0.012, -0.16, 0.16)
-        + (walking ? Math.sin(a.phase) * 0.035 * k : 0)
-        + (wiggle ? Math.sin(now * 11) * 0.09 : 0)
-        + (a.flying ? -a.bank * 0.4 : 0);
+    const sit = pose === "sit";
+    rig.current.scale.set(flipX * (0.15 + 0.85 * flip) * (1 + (1 - step) * 0.03 * k), 1 - (1 - step) * 0.04 * k + breathe, 1);
+    // seated, the hips come down to the ground (or the plane)
+    rig.current.position.y = sit ? -(FRAME[1] - PIVOT.side.leg[1]) * PX + 0.2 : step * 0.26 * k;
+    rig.current.rotation.z = still ? 0
+      : -THREE.MathUtils.clamp(a.side * 0.012, -0.14, 0.14) * flipX + (a.flying ? -a.bank * 0.4 : 0);
 
-    // riding the plane: me on top, the plane under my feet, nose to the travel
+    const s = limbs.side, f = limbs[view === "back" ? "back" : "front"];
+    if (view === "side") {
+      // forward is to the art's left, which is a negative turn
+      let arm = -sw * 0.45 * k, near = sw * 0.5 * k, far = -sw * 0.5 * k;
+      if (sit) { near = far = -1.45; arm = -0.75 + Math.sin(now * 14) * 0.04; }      // typing
+      if (pose === "point") arm = -1.45;
+      if (pose === "coffee") arm = -1.0 + Math.sin(now * 1.6) * 0.08;
+      s.arm.current?.rotation.set(0, 0, arm);
+      s.near.current?.rotation.set(0, 0, near);
+      s.far.current?.rotation.set(0, 0, far);
+      // the props ride in the hand
+      const [hx, hy] = at(...HAND), [ax, ay] = at(...PIVOT.side.arm);
+      const c = Math.cos(arm), si = Math.sin(arm), dx = hx - ax, dy = hy - ay;
+      const handX = ax + dx * c - dy * si, handY = ay + dx * si + dy * c;
+      if (lap.current) { lap.current.visible = sit; lap.current.position.set(-1.05, at(0, PIVOT.side.leg[1])[1] + 0.32, 0.05); }
+      if (cup.current) { cup.current.visible = pose === "coffee"; cup.current.position.set(handX - 0.05, handY + 0.12, 0.06); }
+    } else {
+      if (lap.current) lap.current.visible = false;
+      if (cup.current) cup.current.visible = false;
+      // seen from in front, a stride is a foot lifting and the arms swaying out
+      const lift = (x: number) => Math.max(0, x) * 0.16 * k;
+      f.ll.current?.position.setY(at(...PIVOT.front.leg_l)[1] + lift(sw));
+      f.lr.current?.position.setY(at(...PIVOT.front.leg_r)[1] + lift(-sw));
+      let al = -0.06 - sw * 0.07 * k, ar = 0.06 - sw * 0.07 * k;
+      // his right hand is on the viewer's left from the front
+      if (pose === "wave") al = -2.55 + Math.sin(now * 9) * 0.25;
+      f.al.current?.rotation.set(0, 0, view === "back" ? -ar : al);
+      f.ar.current?.rotation.set(0, 0, view === "back" ? -al : ar);
+    }
+
+    // riding the plane: me sitting on top, the plane under me, nose to the travel
     if (plane.current) {
       plane.current.visible = a.flying;
       if (a.flying) {
         // the shape's nose points along -z once laid flat, hence the half turn
-        plane.current.position.set(0, p.y - 0.05, 0);
+        plane.current.position.set(p.x, p.y - 0.05, p.z);
         plane.current.rotation.set(0, a.heading + Math.PI, 0);
         plane.current.children[0].rotation.set(-Math.PI / 2, a.bank, 0);
       }
     }
     if (shadow.current) {
       // the shadow stays on the ground and shrinks the higher I go
-      const h = Math.max(0, p.y - a.floor);
-      shadow.current.scale.setScalar(1 / (1 + h * 0.08));
-      shadow.current.position.y = a.floor + 0.05;
+      shadow.current.position.set(p.x, a.floor + 0.05, p.z);
+      shadow.current.scale.setScalar(1 / (1 + Math.max(0, p.y - a.floor) * 0.08));
     }
     if (puff.current) {
       const age = a.landed ? now - a.landed.t : 9;
       puff.current.visible = age < 0.6 && !still;
       if (puff.current.visible && a.landed) {
-        puff.current.position.set(a.landed.x - p.x, a.floor + 0.08, a.landed.z - p.z);
+        puff.current.position.set(a.landed.x, a.floor + 0.08, a.landed.z);
         puff.current.scale.setScalar(1 + age * 5);
         (puff.current.material as THREE.MeshBasicMaterial).opacity = 0.45 * (1 - age / 0.6);
       }
     }
   });
 
+  const hover = {
+    onClick: (e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); },
+    onPointerOver: () => (document.body.style.cursor = "pointer"),
+    onPointerOut: () => (document.body.style.cursor = ""),
+  };
+  const FAR = "#c9cbd6";        // the far leg, a shade back
+  const body = (v: "front" | "back") => (
+    <group ref={views[v]} visible={v === "front"}>
+      <Part tex={T[`${v}-leg_l`]} pivot={PIVOT.front.leg_l} z={-0.02} partRef={limbs[v].ll} />
+      <Part tex={T[`${v}-leg_r`]} pivot={PIVOT.front.leg_r} z={-0.02} partRef={limbs[v].lr} />
+      <Part tex={T[`${v}-body`]} pivot={[192, 384]} z={0} />
+      <Part tex={T[`${v}-arm_l`]} pivot={PIVOT.front.arm_l} z={0.02} partRef={limbs[v].al} />
+      <Part tex={T[`${v}-arm_r`]} pivot={PIVOT.front.arm_r} z={0.02} partRef={limbs[v].ar} />
+    </group>
+  );
+
   return (
-    <group ref={root}>
-      <sprite
-        ref={sprite} center={[0.5, 0]}
-        onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); }}
-        onPointerOver={() => (document.body.style.cursor = "pointer")}
-        onPointerOut={() => (document.body.style.cursor = "")}
-      >
-        <spriteMaterial ref={mat} map={faceTex[0]} alphaTest={0.5} toneMapped={false} />
-      </sprite>
-      <mesh ref={shadow} position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <>
+      <group ref={root}>
+        <group ref={rig} {...hover}>
+          {body("front")}
+          {body("back")}
+          <group ref={views.side} visible={false}>
+            <Part tex={T["side-leg"]} pivot={PIVOT.side.leg} z={-0.03} tint={FAR} partRef={limbs.side.far} />
+            <Part tex={T["side-leg"]} pivot={PIVOT.side.leg} z={-0.015} partRef={limbs.side.near} />
+            <Part tex={T["side-body"]} pivot={[192, 384]} z={0} />
+            <mesh ref={lap} visible={false}>
+              <planeGeometry args={[1.5, 1.5]} />
+              <meshBasicMaterial map={laptop} alphaTest={0.5} toneMapped={false} side={THREE.DoubleSide} />
+            </mesh>
+            <Part tex={T["side-arm"]} pivot={PIVOT.side.arm} z={0.03} partRef={limbs.side.arm} />
+            <mesh ref={cup} visible={false} position={[0, 0, 0.06]}>
+              <planeGeometry args={[0.8, 0.8]} />
+              <meshBasicMaterial map={mug} alphaTest={0.5} toneMapped={false} side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+        </group>
+      </group>
+      <mesh ref={shadow} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.95, 20]} />
         <meshBasicMaterial color={INK} transparent opacity={0.12} depthWrite={false} />
       </mesh>
@@ -194,7 +268,7 @@ export function Avatar({ me, anim, motion, onPick }: {
         <ringGeometry args={[0.7, 1.05, 28]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.45} depthWrite={false} />
       </mesh>
-    </group>
+    </>
   );
 }
 
