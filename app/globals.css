@@ -808,3 +808,33 @@ button.world-enter { background: none; font: inherit; cursor: pointer; }
   .atlas-panel { top: auto; bottom: 0.5rem; left: 0.5rem; right: 0.5rem; height: 80dvh; max-height: calc(100dvh - 1rem); z-index: 30; }
   .atlas-close { top: 0.4rem; right: 0.4rem; font-size: 1.6rem; }
 }
+
+/* ---------- rooms: the paper fold between the world and a room ---------- */
+.fold { position: fixed; inset: 0; z-index: 40; display: flex; perspective: 1600px; pointer-events: all; }
+.fold i {
+  flex: 1; background:
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(27,36,55,.05) 31px 32px),
+    linear-gradient(180deg, #fbf8f1, #f1ebdc);
+  box-shadow: inset 0 0 60px rgba(27,36,55,.08);
+}
+.fold i:first-child { transform-origin: left center; border-right: 1px solid rgba(27,36,55,.18); }
+.fold i:nth-child(2) { transform-origin: right center; }
+.fold b {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-size: clamp(1.4rem, 4vw, 2.4rem); font-weight: 800; font-stretch: 112%; color: var(--ink);
+  white-space: nowrap; opacity: 0;
+}
+.fold.is-shut i:first-child { animation: fold-l 460ms cubic-bezier(.5,0,.6,1) both; }
+.fold.is-shut i:nth-child(2) { animation: fold-r 460ms cubic-bezier(.5,0,.6,1) both; }
+.fold.is-shut b { animation: fold-word 460ms ease-in both; }
+.fold.is-open i:first-child { animation: fold-l 460ms cubic-bezier(.4,0,.5,1) reverse both; }
+.fold.is-open i:nth-child(2) { animation: fold-r 460ms cubic-bezier(.4,0,.5,1) reverse both; }
+.fold.is-open b { animation: fold-word 460ms ease-out reverse both; }
+@keyframes fold-l { from { transform: rotateY(-88deg); } to { transform: rotateY(0); } }
+@keyframes fold-r { from { transform: rotateY(88deg); } to { transform: rotateY(0); } }
+@keyframes fold-word { 0%, 55% { opacity: 0; } 100% { opacity: 1; } }
+.atlas-leave { font-weight: 700 !important; border-width: 1.5px !important; }
+/* the world's floating labels live beside the canvas; hide them in a room */
+.atlas.in-room canvas ~ div,
+.atlas.in-room div:has(> canvas) ~ div,
+.atlas.in-room div:has(> div > canvas) > div:not(:has(canvas)) { display: none !important; }

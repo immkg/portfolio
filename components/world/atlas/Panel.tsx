@@ -27,6 +27,7 @@ export default function Panel({ w, pick, onPick, onClose }: {
         {pick.kind === "district" && <DistrictCard w={w} id={pick.id} onPick={onPick} />}
         {pick.kind === "about" && <AboutCard w={w} onPick={onPick} />}
         {pick.kind === "reach" && <ReachCard w={w} onPick={onPick} />}
+        {pick.kind === "built" && <BuiltCard w={w} i={pick.i} />}
       </div>
     </aside>
   );
@@ -164,6 +165,19 @@ function DistrictCard({ w, id, onPick }: { w: WorldData; id: string; onPick: (p:
     <>
       <Head icon={`domain-${id}`} kicker={`${items.length} projects`} title={d?.label ?? id} pen={PEN[id]} />
       <ul className="atlas-list">{items.map((p) => <ProjectRow key={p.slug} w={w} slug={p.slug} onPick={onPick} />)}</ul>
+    </>
+  );
+}
+
+/** One of the things built for myself, from the lab. */
+function BuiltCard({ w, i }: { w: WorldData; i: number }) {
+  const b = w.about?.built[i];
+  if (!b) return null;
+  return (
+    <>
+      <Head kicker="The lab · built for myself" title={b.name} pen="#6b953a" />
+      <p className="atlas-lede">{b.line}</p>
+      <div className="atlas-links"><a href={b.url} target="_blank" rel="noopener">Open on GitHub ↗</a></div>
     </>
   );
 }

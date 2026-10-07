@@ -10,6 +10,7 @@ import Minimap from "./Minimap";
 import Joystick from "./Joystick";
 import { BUILTIN_ALIASES, buildAliases, smartHit } from "@/lib/smartMatch";
 import { track } from "@/lib/analytics";
+import { buildRooms, doorstep, exhibitFor, type Exhibit, type RoomDef } from "./Rooms";
 import {
   type WorldData, type Pick, ROOT, ICON, PEN, FAMILY_INK, dateAt, districtAt,
   districtSpot, skillSpots, plinth, span,
@@ -44,6 +45,8 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     hop: { current: false },
     trip: { current: null },
     arrive: { current: null },
+    space: { current: null },
+    go: { current: null },
   }).current;
 
   /* first person: walk in at the avatar's eyes, or fly back out */
@@ -119,6 +122,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   useEffect(() => {
     if (!w) return;
     const t = setInterval(() => {
+      if (shared.space.current) return;
       const p = shared.me.current;
       const next = { when: dateAt(Math.hypot(p.x, p.z), w), district: districtAt(p.x, p.z, w) };
       setWhere((o) => (o.when === next.when && o.district === next.district ? o : next));
@@ -140,6 +144,94 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
 
   const spots = useMemo(() => (w ? skillSpots(w.skills) : {}), [w]);
 
+  /* walk to a spot, then do something there (a card waiting on arrival) */
+  const walkThen = useCallback((to: [number, number], focus: [number, number], open: () => void) => {
+    const goal = new THREE.Vector3(to[0], 0, to[1]);
+    if (Math.hypot(goal.x - shared.me.current.x, goal.z - shared.me.current.z) < 1.2) { open(); return; }
+    let done = false;
+    const once = () => { if (!done) { done = true; open(); } };
+    shared.arrive.current = { goal, focus, open: once };
+    shared.target.current = goal;
+    setTimeout(() => { if (shared.arrive.current?.goal === goal) { shared.arrive.current = null; once(); } }, 4000);
+  }, [shared]);
+
+  /* rooms: built from the data, entered through a door, left by the exit mat,
+     the Leave button or Esc. The paper folds shut, the room swaps, it opens. */
+  const rooms = useMemo(() => (w ? buildRooms(w) : []), [w]);
+  const [room, setRoom] = useState<RoomDef | null>(null);
+  const [fold, setFold] = useState<{ phase: "shut" | "open"; title: string } | null>(null);
+  const outside = useRef<{ yaw: number; pitch: number; far: number } | null>(null);
+  const busy = useRef(false);
+  const goRoom = useCallback((id: string | null) => {
+    const next = id ? rooms.find((r) => r.id === id) ?? null : null;
+    const cur = shared.space.current;
+    if (busy.current || (id && !next) || (cur?.id ?? null) === (next?.id ?? null)) return;
+    busy.current = true;
+    setPick(null); shared.arrive.current = null; shared.target.current = null;
+    if (document.pointerLockElement) document.exitPointerLock();
+    const swap = () => {
+      if (next) {
+        if (!cur) outside.current = { yaw: shared.yaw.current, pitch: shared.pitch.current, far: shared.far.current };
+        shared.me.current.set(next.spawn[0], 0, next.spawn[1]);
+        shared.yaw.current = 0.2; shared.pitch.current = 0.5;
+        track("room_enter", { room: next.id });
+      } else if (cur) {
+        // back out on the step in front of the door you came in by
+        const [x, z] = doorstep(cur, 3.8);
+        shared.me.current.set(x, 0, z);
+        const o = outside.current;
+        if (o) { shared.yaw.current = o.yaw; shared.pitch.current = o.pitch; shared.far.current = o.far; }
+      }
+      shared.space.current = next;
+      setRoom(next);
+      const u = new URL(window.location.href);
+      if (next) u.searchParams.set("room", next.id); else u.searchParams.delete("room");
+      u.searchParams.delete("p");
+      window.history.replaceState(null, "", u.toString());
+    };
+    if (motion === "static") { swap(); busy.current = false; return; }
+    setFold({ phase: "shut", title: next ? next.title : "Back to the world" });
+    setTimeout(() => {
+      swap();
+      setFold({ phase: "open", title: next ? next.title : "Back to the world" });
+      setTimeout(() => { setFold(null); busy.current = false; }, 460);
+    }, 460);
+  }, [rooms, shared, motion]);
+  shared.go.current = goRoom;
+
+  /* a click on a door walks you to its step; the step takes you in */
+  const onDoor = useCallback((r: RoomDef) => {
+    const [x, z] = doorstep(r);
+    if (Math.hypot(x - shared.me.current.x, z - shared.me.current.z) < 1.6) { goRoom(r.id); return; }
+    shared.arrive.current = null;
+    shared.target.current = new THREE.Vector3(x, 0, z);
+  }, [shared, goRoom]);
+
+  /* using an exhibit: walk up to it, then open its card or follow its link */
+  const onUse = useCallback((e: Exhibit, p?: Pick) => {
+    const pk = p ?? e.pick;
+    const act = () => {
+      if (e.href) {
+        track(e.download ? "resume_download" : "reach_contact", e.download ? { from: "post_office" } : { via: "post_office_call" });
+        const a = document.createElement("a");
+        a.href = e.href; if (e.download) a.download = ""; a.click();
+      } else if (pk) setPick(pk);
+    };
+    if (shared.view.current === "fpv" || motion === "static") { act(); return; }
+    walkThen(e.stand, [e.at[0], e.at[2]], act);
+  }, [shared, motion, walkThen]);
+
+  /* Esc steps back out of a room, once any open card is closed */
+  useEffect(() => {
+    const k = (ev: KeyboardEvent) => {
+      if (ev.key !== "Escape" || !shared.space.current || document.pointerLockElement) return;
+      if (document.querySelector(".atlas-panel")) return;
+      goRoom(null);
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [goRoom, shared]);
+
   /* picking something walks you over to it, and its card opens when you
      arrive (at once in first person, where you are already looking at it) */
   const onPick = useCallback((p: Pick) => {
@@ -147,7 +239,16 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     if (document.pointerLockElement) document.exitPointerLock();   // a card needs the mouse back
     setQ("");
     shared.arrive.current = null;
-    track("world_open", { kind: p.kind, id: "slug" in p ? p.slug : "id" in p ? p.id : p.kind });
+    track("world_open", { kind: p.kind, id: "slug" in p ? p.slug : "id" in p ? p.id : "i" in p ? String(p.i) : p.kind });
+    // inside a room: walk to whatever shows it here, or just open the card
+    const here = shared.space.current;
+    if (here) {
+      const ex = exhibitFor(here, p);
+      if (ex && shared.view.current !== "fpv" && motion !== "static") walkThen(ex.stand, [ex.at[0], ex.at[2]], () => setPick(p));
+      else setPick(p);
+      return;
+    }
+    if (p.kind === "built") { setPick(p); return; }
     let to: [number, number] | null = null;
     if (p.kind === "project") {
       const x = w.projects.find((o) => o.slug === p.slug);
@@ -172,7 +273,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     shared.target.current = goal;
     // never leave a card waiting on a walk that got stuck
     setTimeout(() => { if (shared.arrive.current?.goal === goal) { shared.arrive.current = null; open(); } }, 5000);
-  }, [w, spots, shared]);
+  }, [w, spots, shared, walkThen, motion]);
 
   /* a link can open the world on one thing: ?p=project:slug, skill:slug,
      story:id, district:id, reach or about. The text pages link here. */
@@ -180,6 +281,8 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   useEffect(() => {
     if (!w || opened.current) return;
     opened.current = true;
+    const inRoom = new URLSearchParams(window.location.search).get("room");
+    if (inRoom && rooms.some((r) => r.id === inRoom)) { goRoom(inRoom); return; }
     const q = new URLSearchParams(window.location.search).get("p");
     if (!q) return;
     const [kind, id] = q.split(":");
@@ -190,7 +293,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
       (kind === "district" && w.districts.includes(id));
     if (ok) onPick({ kind, ...(kind === "story" ? { id } : kind === "district" ? { id } : { slug: id }) } as Pick);
     else if (kind === "reach" || kind === "about") onPick({ kind } as Pick);
-  }, [w, onPick]);
+  }, [w, onPick, rooms, goRoom]);
 
   /* the same forgiving search as the text pages: acronyms (adr, k8s), synonyms,
      typos, and each skill's other names. Skills first, best match first. */
@@ -223,7 +326,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
 
   return (
     <div
-      className="world atlas"
+      className={`world atlas${room ? " in-room" : ""}`}
       onPointerDown={(e) => {
         const el = e.target as HTMLElement;
         if (el.tagName !== "CANVAS") return;
@@ -253,7 +356,8 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
       >
         <PerformanceMonitor onDecline={() => setDpr(1)} />
         <AdaptiveDpr pixelated />
-        <Scene w={w} shared={shared} pick={pick} onPick={onPick} motion={motion} />
+        <Scene w={w} shared={shared} pick={pick} onPick={onPick} motion={motion}
+               rooms={rooms} room={room} onDoor={onDoor} onUse={onUse} onExit={() => goRoom(null)} />
       </Canvas>
 
       <header className="atlas-hud">
@@ -261,12 +365,19 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
           <img src={ICON("mark")} alt="" width={28} height={28} />
           <span><b>{w.profile.name}</b><small>{w.profile.headline.split("|")[0].trim()}</small></span>
         </button>
-        <div className="atlas-where" aria-live="off">
-          <span className="atlas-when">{where.when}</span>
-          <span className="atlas-dist" style={{ ["--pen" as any]: where.district ? PEN[where.district] : "#7b87a3" }}>
-            {dLabel ?? (where.when === "Now" ? "The plaza" : "Between districts")}
-          </span>
-        </div>
+        {room ? (
+          <div className="atlas-where" aria-live="polite" style={{ ["--pen" as any]: room.pen }}>
+            <span className="atlas-when">{room.title}</span>
+            <span className="atlas-dist">{room.kicker}</span>
+          </div>
+        ) : (
+          <div className="atlas-where" aria-live="off">
+            <span className="atlas-when">{where.when}</span>
+            <span className="atlas-dist" style={{ ["--pen" as any]: where.district ? PEN[where.district] : "#7b87a3" }}>
+              {dLabel ?? (where.when === "Now" ? "The plaza" : "Between districts")}
+            </span>
+          </div>
+        )}
         <button className="atlas-reach" onClick={() => onPick({ kind: "reach" })} aria-label="Say hi: send me a paper plane">
           <svg className="atlas-reach-trail" viewBox="0 0 40 20" width="40" height="20" aria-hidden="true">
             <path d="M1 16 C10 18, 16 4, 26 9 S36 12, 39 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2 3" strokeLinecap="round" />
@@ -293,9 +404,9 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
         </div>
       </header>
 
-      {!(view === "fpv" && touch) && <Minimap w={w} shared={shared} pick={pick} onPick={onPick} />}
+      {!(view === "fpv" && touch) && <Minimap w={w} shared={shared} pick={pick} onPick={onPick} rooms={rooms} room={room} onDoor={onDoor} />}
 
-      <nav className="atlas-legend" aria-label="Districts">
+      {!room && <nav className="atlas-legend" aria-label="Districts">
         {w.districts.map((d) => {
           const x = w.domains.find((o) => o.id === d);
           return (
@@ -305,7 +416,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
             </button>
           );
         })}
-      </nav>
+      </nav>}
 
       <div className="atlas-tools">
         <button className="atlas-view" onClick={() => goView(view === "fpv" ? "tp" : "fpv")}>
@@ -318,13 +429,15 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
             {steps ? "♪ Steps on" : "♪ Steps off"}
           </button>
         )}
-        {view === "tp" && <button onClick={() => { shared.far.current = high ? 1 : 2.9; setHigh(!high); }}>
+        {view === "tp" && !room && <button onClick={() => { shared.far.current = high ? 1 : 2.9; setHigh(!high); }}>
           {high ? "Back down" : "High ground"}
         </button>}
         {view === "tp" && <button aria-label="Turn left" onClick={() => (shared.yaw.current += 0.6)}>⟲</button>}
         {view === "tp" && <button aria-label="Turn right" onClick={() => (shared.yaw.current -= 0.6)}>⟳</button>}
         {view === "tp" && <button aria-label="Tilt" onClick={() => (shared.pitch.current = shared.pitch.current > 1 ? 0.35 : shared.pitch.current + 0.4)}>Tilt</button>}
-        <button onClick={() => { shared.target.current = new THREE.Vector3(0, 0, 13); setPick(null); }}>Plaza</button>
+        {room
+          ? <button className="atlas-leave" onClick={() => goRoom(null)}>↩ Leave room</button>
+          : <button onClick={() => { shared.target.current = new THREE.Vector3(0, 0, 13); setPick(null); }}>Plaza</button>}
         <a href={`${ROOT}/work/`}><span className="atlas-long">Read as text</span><span className="atlas-short">As text</span></a>
       </div>
 
@@ -343,6 +456,12 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
           {aim && <div className="fpv-hint">{aim}<span>{touch ? "tap it to open" : "click to open"}</span></div>}
           {touch && <Joystick shared={shared} />}
         </>
+      )}
+
+      {fold && (
+        <div className={`fold is-${fold.phase}`} aria-hidden="true">
+          <i /><i /><b>{fold.title}</b>
+        </div>
       )}
 
       {pick && <Panel w={w} pick={pick} onPick={onPick} onClose={() => setPick(null)} />}

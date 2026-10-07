@@ -48,7 +48,8 @@ export type Pick =
   | { kind: "story"; id: string }
   | { kind: "about" }
   | { kind: "reach" }
-  | { kind: "district"; id: string };
+  | { kind: "district"; id: string }
+  | { kind: "built"; i: number };
 
 export const ROOT = "";
 export const ICON = (name: string) => `${ROOT}/world/icons/${name}.webp`;

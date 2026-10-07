@@ -9,6 +9,10 @@ import { Decal, CAMERA_YAW, tap, paint, WorldMarks, Sky } from "./Marks";
 import { type AimTarget, buildColliders, buildTargets, groundAt, slide } from "./Colliders";
 import { type Anim, Avatar, Footprints, RouteMarks, newAnim } from "./Avatar";
 import { planTrip } from "./Trip";
+import { type Collider } from "./Colliders";
+import { type RoomDef, type Exhibit, doorstep } from "./Rooms";
+import { RoomScene } from "./Room";
+import { Doors } from "./Doors";
 import {
   type WorldData, type Pick, type Project, PEN, FILL, FAMILY_INK, ICON,
   districtSpot, skillSpots, plinth, span,
@@ -54,6 +58,10 @@ export type Shared = {
   trip: React.MutableRefObject<{ pts: [number, number][]; fly: boolean } | null>;
   /** a card waiting for me to arrive: opened when I reach this goal */
   arrive: React.MutableRefObject<{ goal: THREE.Vector3; focus: [number, number]; open: () => void } | null>;
+  /** the room I am in, or null out in the world */
+  space: React.MutableRefObject<RoomDef | null>;
+  /** step through a door: a room's id to go in, null to come back out */
+  go: React.MutableRefObject<((id: string | null) => void) | null>;
 };
 
 
@@ -684,8 +692,19 @@ function footstep() {
   } catch { /* no audio, no steps */ }
 }
 
-function Visitor({ w, shared, motion, onPick }: {
-  w: WorldData; shared: Shared; motion: "full" | "static"; onPick: (p: Pick) => void;
+/** What is solid in a room, and what the crosshair can rest on there. */
+function roomBits(r: RoomDef): { c: Collider[]; t: AimTarget[] } {
+  const c: Collider[] = [], t: AimTarget[] = [];
+  for (const e of r.exhibits) {
+    if (e.kind === "bench" || e.kind === "kiosk") c.push({ x: e.at[0], z: e.at[2], r: e.w / 2, h: 3 });
+    if (e.kind === "arch") [-1, 1].forEach((s) => c.push({ x: e.at[0] + s * e.w / 2, z: e.at[2], r: 0.5, h: 9 }));
+    if (e.pick) t.push({ x: e.at[0], y: e.kind === "year" ? 0.5 : Math.max(1.5, e.at[1]), z: e.at[2], size: Math.max(e.w, e.h) / 2, pick: e.pick, label: e.title });
+  }
+  return { c, t };
+}
+
+function Visitor({ w, rooms, shared, motion, onPick }: {
+  w: WorldData; rooms: RoomDef[]; shared: Shared; motion: "full" | "static"; onPick: (p: Pick) => void;
 }) {
   const { camera, scene } = useThree();
   const keys = useRef<Record<string, boolean>>({});
@@ -693,8 +712,16 @@ function Visitor({ w, shared, motion, onPick }: {
   const vy = useRef(0);                     // vertical speed, for hops
   const lookAt = useRef(new THREE.Vector3(0, 2, 0));
   const lastStep = useRef(0);
-  const colliders = useMemo(() => buildColliders(w), [w]);
-  const targets = useMemo(() => buildTargets(w), [w]);
+  // the world's solid things include each room's little building
+  const worldColliders = useMemo(() => [
+    ...buildColliders(w),
+    ...rooms.map((r) => ({ x: r.door.x - Math.sin(r.door.yaw) * 0.6, z: r.door.z - Math.cos(r.door.yaw) * 0.6, r: 2.1, h: 6 })),
+  ], [w, rooms]);
+  const worldTargets = useMemo(() => buildTargets(w), [w]);
+  const roomCache = useRef(new Map<string, { c: Collider[]; t: AimTarget[] }>());
+  const inSpace = useRef<string | null>(null);   // which space the last frame was in
+  const armed = useRef(false);                   // a door only fires once you have stepped away from it
+  const snap = useRef(false);
   const aimAt = useRef(0);
   const anim = useRef<Anim>(newAnim());
 
@@ -744,6 +771,19 @@ function Visitor({ w, shared, motion, onPick }: {
     const a = anim.current, now = performance.now();
     const still = motion === "static";
 
+    // world or room: what is solid, what can be aimed at, where the edges are
+    const room = shared.space.current;
+    if ((room?.id ?? null) !== inSpace.current) {
+      // just stepped through a door: start clean where I now stand
+      inSpace.current = room?.id ?? null;
+      trip.current = null; target.current = null; shared.trip.current = null;
+      a.route = null; a.dest = null; a.prints.length = 0; a.flying = false;
+      vel.current.set(0, 0, 0); vy.current = 0; armed.current = false; snap.current = true;
+    }
+    if (room && !roomCache.current.has(room.id)) roomCache.current.set(room.id, roomBits(room));
+    const colliders = room ? roomCache.current.get(room.id)!.c : worldColliders;
+    const targets = room ? roomCache.current.get(room.id)!.t : worldTargets;
+
     // ease the camera between above and the eyes (a cut for reduced motion)
     const want = fpv ? 1 : 0;
     shared.blend.current = still ? want : THREE.MathUtils.damp(shared.blend.current, want, 3.2, dt);
@@ -768,7 +808,10 @@ function Visitor({ w, shared, motion, onPick }: {
     // a new place to go: plan the trip there
     if (target.current && (!trip.current || trip.current.goal !== target.current)) {
       const goal = target.current;
-      const plan = planTrip(w, [pos.x, pos.z], [goal.x, goal.z]);
+      // rooms are small and open: walk straight; the world keeps to its roads
+      const plan = room
+        ? { pts: [[pos.x, pos.z], [goal.x, goal.z]] as [number, number][], len: Math.hypot(goal.x - pos.x, goal.z - pos.z), fly: false }
+        : planTrip(w, [pos.x, pos.z], [goal.x, goal.z]);
       trip.current = { goal, pts: plan.pts, i: 1, len: plan.len, fly: null, best: Infinity, since: now };
       if (plan.fly && !still && !fpv) {
         const dist = plan.len;
@@ -850,8 +893,13 @@ function Visitor({ w, shared, motion, onPick }: {
       if (still) vel.current.copy(step);
       else vel.current.lerp(step, Math.min(1, dt * 7));
       pos.x += vel.current.x * dt; pos.z += vel.current.z * dt;
-      const r = Math.hypot(pos.x, pos.z), lim = 150;
-      if (r > lim) { pos.x *= lim / r; pos.z *= lim / r; }
+      if (room) {
+        pos.x = THREE.MathUtils.clamp(pos.x, -room.W / 2 + 1, room.W / 2 - 1);
+        pos.z = THREE.MathUtils.clamp(pos.z, -room.D / 2 + 1.2, room.D / 2 - 0.6);
+      } else {
+        const r = Math.hypot(pos.x, pos.z), lim = 150;
+        if (r > lim) { pos.x *= lim / r; pos.z *= lim / r; }
+      }
 
       // hop, gravity, standing on whatever is underfoot, sliding round the rest
       if (shared.hop.current) {
@@ -864,6 +912,19 @@ function Visitor({ w, shared, motion, onPick }: {
       if (pos.y < floor) { pos.y = floor; vy.current = 0; }
       slide(colliders, pos, pos.y);
       a.floor = floor;
+    }
+
+    // doors: stepping onto a doorstep goes in, onto the exit mat comes out
+    if (!a.flying && shared.go.current) {
+      let near = Infinity, hit: string | null = null;
+      if (room) near = Math.hypot(pos.x - room.exit[0], pos.z - room.exit[1]);
+      else for (const r of rooms) {
+        const [dx, dz] = doorstep(r);
+        const d = Math.hypot(pos.x - dx, pos.z - dz);
+        if (d < near) { near = d; hit = r.id; }
+      }
+      if (near < 1.4 && armed.current) { armed.current = false; shared.go.current(room ? null : hit); }
+      else if (near > 3.5) armed.current = true;
     }
 
     // the walking rhythm: head bob, steps if sound is on, and a footprint per step
@@ -912,19 +973,30 @@ function Visitor({ w, shared, motion, onPick }: {
     // where each view would put the camera, mixed by the blend
     const narrow = window.innerWidth < 720 ? 1.55 : 1;
     const f = shared.far.current * narrow;
-    const R = 63 * f, yw = shared.yaw.current, pt = shared.pitch.current;
+    if (room) {
+      // a room is seen from its open side: keep the camera in front of it
+      shared.yaw.current = THREE.MathUtils.clamp(shared.yaw.current, -0.7, 0.7);
+      shared.pitch.current = THREE.MathUtils.clamp(shared.pitch.current, 0.2, 1.0);
+    }
+    // far enough back to hold the whole room in a narrow lens; a phone follows me instead
+    const R = room ? (narrow > 1 ? Math.max(room.W * 0.8, room.D * 1.6) : Math.max(room.W * 1.12, room.D * 1.9)) : 63 * f;
+    const yw = shared.yaw.current, pt = shared.pitch.current;
     // in flight the camera keeps nearer the ground than I do, so the arc shows
     const camY = a.flying ? pos.y * 0.45 : pos.y;
+    // in a room the camera holds the whole room, leaning towards me (more so on a phone)
+    const follow = narrow > 1 ? 0.75 : 0.35;
+    const cx = room ? THREE.MathUtils.lerp(0, pos.x, follow) : pos.x;
+    const cz = room ? THREE.MathUtils.lerp(-room.D * 0.12, pos.z, follow) : pos.z;
     const tpCam = new THREE.Vector3(
-      pos.x + R * Math.sin(yw) * Math.cos(pt), camY + R * Math.sin(pt), pos.z + R * Math.cos(yw) * Math.cos(pt));
-    const tpLook = new THREE.Vector3(pos.x, camY + 2, pos.z);
+      cx + R * Math.sin(yw) * Math.cos(pt), camY + R * Math.sin(pt), cz + R * Math.cos(yw) * Math.cos(pt));
+    const tpLook = new THREE.Vector3(cx, camY + (room ? 4.2 : 2), cz);
     const bob = still ? 0 : Math.sin(a.phase * 2) * 0.09 * Math.min(1, v / 6);
     const fpCam = new THREE.Vector3(pos.x, pos.y + EYE + bob, pos.z);
     const lk = shared.look.current;
     const fpLook = fpCam.clone().add(new THREE.Vector3(-Math.sin(yw) * Math.cos(lk), Math.sin(lk), -Math.cos(yw) * Math.cos(lk)).multiplyScalar(10));
     const camWant = tpCam.lerp(fpCam, t);
     const lookWant = tpLook.lerp(fpLook, t);
-    if (still || t > 0.98) { camera.position.copy(camWant); lookAt.current.copy(lookWant); }
+    if (still || t > 0.98 || snap.current) { camera.position.copy(camWant); lookAt.current.copy(lookWant); snap.current = false; }
     else {
       camera.position.lerp(camWant, Math.min(1, dt * (2.6 + t * 12)));
       lookAt.current.lerp(lookWant, Math.min(1, dt * (4 + t * 12)));
@@ -933,7 +1005,10 @@ function Visitor({ w, shared, motion, onPick }: {
 
     // fog closes in at eye level, for depth and to spare the far draw calls
     const fog = scene.fog as THREE.Fog | null;
-    if (fog) { fog.near = THREE.MathUtils.lerp(170, 55, t); fog.far = THREE.MathUtils.lerp(420, 230, t); }
+    if (fog) {
+      fog.near = room ? 400 : THREE.MathUtils.lerp(170, 55, t);
+      fog.far = room ? 900 : THREE.MathUtils.lerp(420, 230, t);
+    }
 
     // the crosshair: the target nearest the centre of view, within reach
     if (fpv && now - aimAt.current > 90) {
@@ -1039,8 +1114,10 @@ function HoverTag({ w, project, skill, spots }: {
 
 /* ---------------- scene ---------------- */
 
-export default function Scene({ w, shared, pick, onPick, motion }: {
+export default function Scene({ w, shared, pick, onPick, motion, rooms, room, onDoor, onUse, onExit }: {
   w: WorldData; shared: Shared; pick: Pick | null; onPick: (p: Pick) => void; motion: "full" | "static";
+  rooms: RoomDef[]; room: RoomDef | null;
+  onDoor: (r: RoomDef) => void; onUse: (e: Exhibit, p?: Pick) => void; onExit: () => void;
 }) {
   const spots = useMemo(() => skillSpots(w.skills), [w]);
   const [hoverP, setHoverP] = useState<Project | null>(null);
@@ -1066,11 +1143,30 @@ export default function Scene({ w, shared, pick, onPick, motion }: {
     return { litP: null, litS: null };
   }, [w, pick]);
 
+  const visitor = (
+    <Suspense key="visitor" fallback={null}><Visitor w={w} rooms={rooms} shared={shared} motion={motion} onPick={onPick} /><ThrownPlane shared={shared} onPick={onPick} /></Suspense>
+  );
+
+  /* in a room the world stays loaded but hidden and deaf to clicks, so coming
+     back out is instant and nothing in it is torn down on the way in */
+  const worldRef = useRef<THREE.Group>(null);
+  useEffect(() => {
+    worldRef.current?.traverse((o) => {
+      if (room) { if (!o.userData.rc) { o.userData.rc = o.raycast; o.raycast = () => {}; } }
+      else if (o.userData.rc) { o.raycast = o.userData.rc; delete o.userData.rc; }
+    });
+  }, [room]);
+
   return (
     <>
       <color attach="background" args={["#f4f7fd"]} />
       <fog attach="fog" args={["#f4f7fd", 170, 420]} />
+      {visitor}
+      {room && <RoomScene r={room} onUse={onUse} onExit={onExit}
+                          onFloor={(x, z) => (shared.target.current = new THREE.Vector3(x, 0, z))} />}
+      <group ref={worldRef} visible={!room}>
       <Ground w={w} onMove={(p) => (shared.target.current = p)} />
+      <Doors rooms={rooms} onDoor={onDoor} />
       <Years w={w} />
       <Roads w={w} />
       <PlazaMarks w={w} onPick={onPick} />
@@ -1080,11 +1176,11 @@ export default function Scene({ w, shared, pick, onPick, motion }: {
       <Plinths w={w} lit={litP} onPick={onPick} onHover={setHoverP} />
       <SkillStones w={w} shared={shared} spots={spots} lit={litS} onPick={onPick} onHover={setHoverS} />
       <Threads w={w} pick={pick} spots={spots} />
-      <Suspense fallback={null}><Visitor w={w} shared={shared} motion={motion} onPick={onPick} /><ThrownPlane shared={shared} onPick={onPick} /></Suspense>
       <Suspense fallback={null}><Centre w={w} onPick={onPick} /></Suspense>
       <Suspense fallback={null}><ProjectArt w={w} shared={shared} lit={litP} onPick={onPick} /></Suspense>
       <Stories w={w} shared={shared} onPick={onPick} />
       <HoverTag w={w} project={hoverP} skill={hoverS} spots={spots} />
+      </group>
     </>
   );
 }
