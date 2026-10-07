@@ -33,6 +33,8 @@ export type WorldData = {
   built_at: string; now: string; oldest: string;
   rings: { year: number; r: number }[];
   plaza: number; rim: number;
+  /** the fitted time scale: [month "YYYY-MM", radius], newest first */
+  scale?: [string, number][];
   profile: { name: string; headline: string; line: string };
   roles: Role[];
   about: About | null;
@@ -80,10 +82,21 @@ export const KIND: Record<string, string> = {
 export function dateAt(r: number, w: WorldData): string {
   if (r < w.plaza) return "Now";
   if (r > w.rim + 2) return "Before the record";
+  const fmt = (t: number) => new Date(t).toLocaleString("en-GB", { month: "short", year: "numeric" });
+  const s = w.scale;
+  if (s && s.length > 1) {
+    // distance is not even in time any more: read the month off the scale
+    for (let i = 0; i < s.length - 1; i++) {
+      const [m1, r1] = s[i], [m0, r0] = s[i + 1];
+      if (r >= r1 && r <= r0) {
+        const t1 = Date.parse(m1 + "-01"), t0 = Date.parse(m0 + "-01");
+        return fmt(t1 + ((r - r1) / Math.max(1e-6, r0 - r1)) * (t0 - t1));
+      }
+    }
+    return fmt(Date.parse(s[s.length - 1][0] + "-01"));
+  }
   const now = Date.parse(w.now), old = Date.parse(w.oldest);
-  const t = now - ((r - w.plaza) / (w.rim - w.plaza)) * (now - old);
-  const d = new Date(t);
-  return d.toLocaleString("en-GB", { month: "short", year: "numeric" });
+  return fmt(now - ((r - w.plaza) / (w.rim - w.plaza)) * (now - old));
 }
 
 /** Which district a ground position falls in, by its angle. */

@@ -4,7 +4,7 @@ import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Html, useTexture } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import Cutout from "../Cutout";
+import Cutout, { BASE } from "../Cutout";
 import { Decal, CAMERA_YAW, tap, paint, WorldMarks, Sky } from "./Marks";
 import { type AimTarget, buildColliders, buildTargets, groundAt, slide } from "./Colliders";
 import { type Anim, Avatar, Footprints, RouteMarks, newAnim } from "./Avatar";
@@ -252,16 +252,30 @@ function Roads({ w }: { w: WorldData }) {
                 <meshBasicMaterial color={PEN[d]} transparent opacity={0.55} />
               </mesh>
             ))}
-            {/* the year, where the road crosses each ring */}
+            {/* the year, where the road crosses each ring: a milestone with the year on it */}
             {w.rings.map((y) => (
-              <sprite key={y.year} position={[y.r, 1.3, 2.6]} scale={[2.9, 1.58, 1]}>
-                <spriteMaterial map={tex[y.year]} toneMapped={false} />
-              </sprite>
+              <group key={y.year}>
+                <Suspense fallback={null}><Milestone at={[y.r, 0, 2.6]} /></Suspense>
+                <sprite position={[y.r, 2.75, 2.6]} scale={[2.9, 1.58, 1]}>
+                  <spriteMaterial map={tex[y.year]} toneMapped={false} />
+                </sprite>
+              </group>
             ))}
           </group>
         );
       })}
     </group>
+  );
+}
+
+/** A small drawn milestone, standing on the ground and turning to face you. */
+function Milestone({ at }: { at: [number, number, number] }) {
+  const tex = useTexture(`${BASE}/room/time-milestone.webp`);
+  useMemo(() => { tex.colorSpace = THREE.SRGBColorSpace; }, [tex]);
+  return (
+    <sprite position={[at[0], at[1] + 1.05, at[2]]} scale={[1.75, 2.1, 1]}>
+      <spriteMaterial map={tex} alphaTest={0.5} toneMapped={false} />
+    </sprite>
   );
 }
 
@@ -272,21 +286,12 @@ function Gates({ w, shared, onPick }: { w: WorldData; shared: Shared; onPick: (p
   return (
     <group>
       {w.districts.map((d, i) => {
-        const [x, z] = districtSpot(i, w.districts.length, w.plaza + 2.5);
+        // one marker per district: its emblem rides on top of the arch over its road
+        const [x, z] = districtSpot(i, w.districts.length, w.plaza + 6.5);
         return (
           <group key={d} position={[x, 0, z]}>
-            <mesh position={[0, 0.35, 0]}>
-              <cylinderGeometry args={[1.9, 2.1, 0.7, 24]} />
-              <meshBasicMaterial color={PEN[d]} />
-            </mesh>
-            <Icon name={`domain-${d}`} at={[0, 3, 0]} size={3.6} always me={shared.me}
+            <Icon name={`domain-${d}`} at={[0, 7.6, 0]} size={2.8} always me={shared.me}
                   onClick={() => onPick({ kind: "district", id: d })} />
-            <Html position={[0, 5.6, 0]} center distanceFactor={26} zIndexRange={[9, 0]}>
-              <button className="atlas-gate" style={{ ["--pen" as any]: PEN[d] }} onPointerDown={stop.onPointerDown}
-                      onClick={(e) => { e.stopPropagation(); onPick({ kind: "district", id: d }); }}>
-                {label[d]?.label ?? d}<span>{label[d]?.count}</span>
-              </button>
-            </Html>
           </group>
         );
       })}
@@ -973,8 +978,9 @@ function Visitor({ w, rooms, shared, motion, onPick }: {
     // where each view would put the camera, mixed by the blend
     const narrow = window.innerWidth < 720 ? 1.55 : 1;
     const f = shared.far.current * narrow;
-    if (room) {
-      // a room is seen from its open side: keep the camera in front of it
+    if (room && !fpv) {
+      // from above, a room is seen from its open side: keep the camera in front of it
+      // (in first person you turn freely; the room grows its fourth wall)
       shared.yaw.current = THREE.MathUtils.clamp(shared.yaw.current, -0.7, 0.7);
       shared.pitch.current = THREE.MathUtils.clamp(shared.pitch.current, 0.2, 1.0);
     }
@@ -1043,7 +1049,19 @@ function AvatarWhenOutside({ shared, anim, motion, onPick }: {
   shared: Shared; anim: React.MutableRefObject<Anim>; motion: "full" | "static"; onPick: (p: Pick) => void;
 }) {
   const g = useRef<THREE.Group>(null);
-  useFrame(() => { if (g.current) g.current.visible = shared.blend.current < 0.6; });
+  useFrame(() => {
+    const g0 = g.current;
+    if (!g0) return;
+    const show = shared.blend.current < 0.6;
+    if (g0.visible !== show) {
+      g0.visible = show;
+      // hidden, it must not catch clicks either: in first person the eye is inside it
+      g0.traverse((o) => {
+        if (!show) { if (!o.userData.rc) { o.userData.rc = o.raycast; o.raycast = () => {}; } }
+        else if (o.userData.rc) { o.raycast = o.userData.rc; delete o.userData.rc; }
+      });
+    }
+  });
   return <group ref={g}><Avatar me={shared.me} anim={anim} motion={motion} onPick={onPick} /></group>;
 }
 
@@ -1162,7 +1180,7 @@ export default function Scene({ w, shared, pick, onPick, motion, rooms, room, on
       <color attach="background" args={["#f4f7fd"]} />
       <fog attach="fog" args={["#f4f7fd", 170, 420]} />
       {visitor}
-      {room && <RoomScene r={room} onUse={onUse} onExit={onExit}
+      {room && <RoomScene r={room} onUse={onUse} onExit={onExit} blend={shared.blend}
                           onFloor={(x, z) => (shared.target.current = new THREE.Vector3(x, 0, z))} />}
       <group ref={worldRef} visible={!room}>
       <Ground w={w} onMove={(p) => (shared.target.current = p)} />

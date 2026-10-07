@@ -43,8 +43,8 @@ export type RoomDef = {
   text: string;                       // the text page this room stands for
 };
 
-const DIST = 40, BESIDE = -5;          // hall doors: this far out along the road, this far to its side
-const LANE = 38;                        // other doors: in the lanes between districts, this far out
+const LANE = 38;                        // everyday rooms: in the lanes between districts, near the plaza
+const FAR = 102;                        // the gallery and the timeline: far out, among the old years
 
 /** Wall spots for n frames: back wall low row, side walls low, then the upper rows. */
 function wallSpots(n: number, W: number, D: number, size: number, gap: number) {
@@ -65,9 +65,9 @@ function wallSpots(n: number, W: number, D: number, size: number, gap: number) {
   return out.slice(0, n);
 }
 
-function lane(i: number, n: number) {
+function lane(i: number, n: number, r = LANE) {
   const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-  return { x: Math.cos(a) * LANE, z: Math.sin(a) * LANE, yaw: Math.atan2(-Math.cos(a), -Math.sin(a)) };
+  return { x: Math.cos(a) * r, z: Math.sin(a) * r, yaw: Math.atan2(-Math.cos(a), -Math.sin(a)) };
 }
 
 const base = (W: number, D: number) => ({
@@ -84,7 +84,9 @@ export function buildRooms(w: WorldData): RoomDef[] {
   /* the district halls: one per domain, its projects newest first */
   w.districts.forEach((d, i) => {
     const a = (i + 0.5) * sector - Math.PI / 2;
-    const x = Math.cos(a) * DIST - Math.sin(a) * BESIDE, z = Math.sin(a) * DIST + Math.cos(a) * BESIDE;
+    // the hall stands across the end of its district's road: walk the district to reach it
+    const end = w.rim + 9;
+    const x = Math.cos(a) * end, z = Math.sin(a) * end;
     const list = w.projects.filter((p) => p.domain === d)
       .sort((p, q) => (q.last ?? "").localeCompare(p.last ?? "") || q.tier - p.tier);
     const W = list.length > 14 ? 50 : 42, D = list.length > 14 ? 28 : 24;
@@ -128,7 +130,7 @@ export function buildRooms(w: WorldData): RoomDef[] {
         { art: "gal-incidents", at: [W / 2 - 0.2, 12.2, -D / 4], w: 2.2, yaw: -Math.PI / 2 },
         { art: "gal-influence", at: [W / 2 - 0.2, 12.2, D / 6], w: 2.2, yaw: -Math.PI / 2 },
       ],
-      pen: "#c35f92", tint: "#f8e3ee", wall: "#fffaf6", ...base(W, D), H: 15, door: lane(4, n), text: "/work/?kind=stories",
+      pen: "#c35f92", tint: "#f8e3ee", wall: "#fffaf6", ...base(W, D), H: 15, door: lane(4, n, FAR), text: "/work/?kind=stories",
       exhibits: list.map((s, k) => {
         const p = w.projects.find((x) => x.slug === s.project);
         return {
@@ -159,7 +161,7 @@ export function buildRooms(w: WorldData): RoomDef[] {
         { art: "time-milestone", at: [W / 2 - 3, 0, D / 2 - 3], w: 1.8 },
         { art: "time-rope", at: [0, 0, D / 2 - 1], w: 6 },
       ],
-      pen: "#009bb4", tint: "#d9f1f5", wall: "#f7fbfc", ...base(W, D), H: 14, door: lane(5, n), text: "/about/",
+      pen: "#009bb4", tint: "#d9f1f5", wall: "#f7fbfc", ...base(W, D), H: 14, door: lane(5, n, FAR), text: "/about/",
       exhibits: [
         // oldest role on the left; arches spaced evenly, the plaques carry the dates
         ...[...w.roles].sort((p, q) => startYear(p.dates) - startYear(q.dates)).map((r, k, all) => {

@@ -11,6 +11,7 @@ import Joystick from "./Joystick";
 import { BUILTIN_ALIASES, buildAliases, smartHit } from "@/lib/smartMatch";
 import { track } from "@/lib/analytics";
 import { buildRooms, doorstep, exhibitFor, type Exhibit, type RoomDef } from "./Rooms";
+import { swallow } from "./Marks";
 import {
   type WorldData, type Pick, ROOT, ICON, PEN, FAMILY_INK, dateAt, districtAt,
   districtSpot, skillSpots, plinth, span,
@@ -87,7 +88,11 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
   /* captured mouse: movement turns the head; a click opens what the crosshair is on */
   useEffect(() => {
     const move = (e: MouseEvent) => { if (document.pointerLockElement) turn(e.movementX, e.movementY); };
-    const down = () => { if (document.pointerLockElement && shared.aim.current) onPickRef.current?.(shared.aim.current.pick); };
+    const down = () => {
+      if (!document.pointerLockElement || !shared.aim.current) return;
+      swallow.until = performance.now() + 500;      // the click after this press is the same pick
+      onPickRef.current?.(shared.aim.current.pick);
+    };
     const change = () => setLocked(!!document.pointerLockElement);
     document.addEventListener("mousemove", move);
     document.addEventListener("mousedown", down);
@@ -352,7 +357,7 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
         dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         camera={{ position: [30, 34, 57], fov: 34, near: 0.5, far: 900 }}
-        onPointerMissed={() => setPick(null)}
+        onPointerMissed={() => { if (performance.now() > swallow.until) setPick(null); }}
       >
         <PerformanceMonitor onDecline={() => setDpr(1)} />
         <AdaptiveDpr pixelated />

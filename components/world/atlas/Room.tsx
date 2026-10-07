@@ -1,8 +1,8 @@
 "use client";
 
 import { useTexture } from "@react-three/drei";
-import { type ThreeEvent } from "@react-three/fiber";
-import { Suspense, useMemo } from "react";
+import { type ThreeEvent, useFrame } from "@react-three/fiber";
+import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { BASE } from "../Cutout";
 import { paint, tap } from "./Marks";
@@ -235,8 +235,57 @@ function DecorPiece({ d }: { d: Decor }) {
   return <Piece name={`room/${d.art}`} w={d.w} at={d.at} flat={d.flat} yaw={d.yaw} />;
 }
 
-export function RoomScene({ r, onUse, onExit, onFloor }: {
+function FrontPaper({ r }: { r: RoomDef }) {
+  const wall = useTexture(`${BASE}/room/${r.wallArt}.webp`);
+  const tex = useMemo(() => {
+    const c = wall.clone();
+    c.colorSpace = THREE.SRGBColorSpace; c.wrapS = THREE.RepeatWrapping;
+    c.repeat.set(Math.max(1, Math.round(r.W / (2 * r.H))), 1); c.needsUpdate = true;
+    return c;
+  }, [wall, r.W, r.H]);
+  return (
+    <mesh position={[0, r.H / 2, 0]} rotation={[0, Math.PI, 0]}>
+      <planeGeometry args={[r.W, r.H]} /><meshBasicMaterial map={tex} toneMapped={false} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+/** In first person the room closes round you: a fourth wall at the front with
+ *  the way out drawn in it as a door you can see and walk to. From above it is
+ *  hidden, so the room still reads as an open doll's house. */
+function FrontWall({ r, onExit, blend }: { r: RoomDef; onExit: () => void; blend: React.MutableRefObject<number> }) {
+  const g = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const show = blend.current > 0.5;
+    if (g.current && g.current.visible !== show) {
+      g.current.visible = show;
+      g.current.traverse((o) => {
+        if (!show) { if (!o.userData.rc) { o.userData.rc = o.raycast; o.raycast = () => {}; } }
+        else if (o.userData.rc) { o.raycast = o.userData.rc; delete o.userData.rc; }
+      });
+    }
+  });
+  const { W, D, H } = r;
+  const [ex] = r.exit;
+  return (
+    <group ref={g} visible={false} position={[0, 0, D / 2]}>
+      <Suspense fallback={<mesh position={[0, H / 2, 0]} rotation={[0, Math.PI, 0]}><planeGeometry args={[W, H]} /><meshBasicMaterial color={r.wall} side={THREE.DoubleSide} /></mesh>}>
+        <FrontPaper r={r} />
+      </Suspense>
+      <mesh position={[0, 0.25, -0.02]} rotation={[0, Math.PI, 0]}><planeGeometry args={[W, 0.5]} /><meshBasicMaterial color={r.pen} side={THREE.DoubleSide} /></mesh>
+      {/* the way out: an open doorway over the exit mat, signed */}
+      <group position={[ex, 0, -0.05]} rotation={[0, Math.PI, 0]} {...hover} onClick={press(onExit)}>
+        <mesh position={[0, 2.6, 0]}><planeGeometry args={[3.2, 5.2]} /><meshBasicMaterial color={INK} /></mesh>
+        <mesh position={[0, 5.6, 0]}><planeGeometry args={[4.4, 0.8]} /><meshBasicMaterial color={r.pen} /></mesh>
+        <Words text="↩ BACK TO THE WORLD" h={0.5} max={4} at={[0, 5.6, 0.02]} ink="#ffffff" />
+      </group>
+    </group>
+  );
+}
+
+export function RoomScene({ r, onUse, onExit, onFloor, blend }: {
   r: RoomDef; onUse: (e: Exhibit, p?: Pick) => void; onExit: () => void; onFloor: (x: number, z: number) => void;
+  blend: React.MutableRefObject<number>;
 }) {
   const { W, D, H } = r;
   return (
@@ -265,6 +314,7 @@ export function RoomScene({ r, onUse, onExit, onFloor }: {
         return <C key={e.id} e={e} onUse={onUse} />;
       })}
       <Exit r={r} onExit={onExit} />
+      <FrontWall r={r} onExit={onExit} blend={blend} />
     </group>
   );
 }

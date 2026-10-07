@@ -17,9 +17,7 @@ export function buildColliders(w: WorldData): Collider[] {
   });
   const n = w.districts.length, sector = (Math.PI * 2) / n;
   w.districts.forEach((_, i) => {
-    // the gate's pad and the arch's two posts
-    const [gx, gz] = districtSpot(i, n, w.plaza + 2.5);
-    out.push({ x: gx, z: gz, r: 2.1, h: 0.7 });
+    // the arch's two posts (the arch is the district's one marker now)
     const a = (i + 0.5) * sector - Math.PI / 2, r = w.plaza + 6.5;
     const tx = -Math.sin(a), tz = Math.cos(a);
     [-2.3, 2.3].forEach((o) => out.push({ x: Math.cos(a) * r + tx * o, z: Math.sin(a) * r + tz * o, r: 0.45, h: 4.2 }));
@@ -81,9 +79,9 @@ export function buildTargets(w: WorldData): AimTarget[] {
   });
   const n = w.districts.length;
   w.districts.forEach((d, i) => {
-    const [x, z] = districtSpot(i, n, w.plaza + 2.5);
+    const [x, z] = districtSpot(i, n, w.plaza + 6.5);
     const label = w.domains.find((o) => o.id === d)?.label ?? d;
-    out.push({ x, y: 3, z, size: 2.4, pick: { kind: "district", id: d }, label: `${label} district` });
+    out.push({ x, y: 5, z, size: 2.8, pick: { kind: "district", id: d }, label: `${label} district` });
   });
   out.push({ x: 0, y: 5, z: -4, size: 5, pick: { kind: "about" }, label: "More about me" });
   return out;

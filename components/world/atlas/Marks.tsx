@@ -13,9 +13,14 @@ const INK = "#1b2437";
 export const CAMERA_YAW = Math.atan2(30, 44);   // the default view; painted words face it
 
 /** A drag turns the world; only a press that barely moved counts as a click. */
+/* A crosshair pick in first person releases the mouse on press, so the click
+   that follows lands with the pointer free; it must not count as a second pick. */
+export const swallow = { until: 0 };
+
 export const tap = (e: ThreeEvent<MouseEvent>) =>
   // with the mouse captured in first person, the crosshair picks, not the pointer
-  e.delta <= 6 && !(typeof document !== "undefined" && document.pointerLockElement);
+  e.delta <= 6 && !(typeof document !== "undefined" && document.pointerLockElement) &&
+  performance.now() > swallow.until;
 
 /* ---------------- paint ---------------- */
 
@@ -204,7 +209,7 @@ function Footprints({ w }: { w: WorldData }) {
 
 /* ---------------- 5. an arch where each road leaves the plaza ---------------- */
 
-function Arches({ w }: { w: WorldData }) {
+function Arches({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
   const n = w.districts.length, sector = (Math.PI * 2) / n;
   const r = w.plaza + 6.5;
   return (
@@ -212,7 +217,10 @@ function Arches({ w }: { w: WorldData }) {
       {w.districts.map((d, i) => {
         const a = (i + 0.5) * sector - Math.PI / 2;
         return (
-          <group key={d} position={[Math.cos(a) * r, 0, Math.sin(a) * r]} rotation={[0, -a, 0]}>
+          <group key={d} position={[Math.cos(a) * r, 0, Math.sin(a) * r]} rotation={[0, -a, 0]}
+                 onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "district", id: d }); }}
+                 onPointerOver={() => (document.body.style.cursor = "pointer")}
+                 onPointerOut={() => (document.body.style.cursor = "")}>
             {[-2.3, 2.3].map((z) => (
               <mesh key={z} position={[0, 2.1, z]}>
                 <boxGeometry args={[0.45, 4.2, 0.45]} />
@@ -440,7 +448,7 @@ export function WorldMarks({ w, spots, onPick, blend }: {
       <HomeArrows w={w} />
       {told.map((p) => <Pennant key={p.slug} p={p} />)}
       <Footprints w={w} />
-      <Arches w={w} />
+      <Arches w={w} onPick={onPick} />
       <EdgeSign w={w} />
       <SkillGroupNames w={w} spots={spots} />
       <Rose />
