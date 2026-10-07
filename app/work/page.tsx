@@ -11,6 +11,8 @@ export const metadata: Metadata = {
     "Mayank Kumar Gupta, engineering leader: 94 skills, 84 projects across document AI, conversational AI, " +
     "search, SaaS, crawling, automation and platform work, 19 stories, and the timeline from 2019 to now.",
   alternates: { canonical: "/work/" },
+  openGraph: { title: "Skills and work — Mayank Kumar Gupta", url: "/work/",
+    description: "94 skills, 84 projects and 19 stories, searchable and grouped by domain, with the timeline from 2019 to now." },
 };
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];

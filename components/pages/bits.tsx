@@ -96,7 +96,7 @@ export function PersonLd({ w }: { w: WorldData }) {
     jobTitle: w.profile.headline.split("|")[0].trim(),
     description: w.profile.line,
     url: `${SITE}/`,
-    image: `${SITE}/world/icons/hero-mayank.webp`,
+    image: `${SITE}/me.png`,
     email: c ? `mailto:${c.email}` : undefined,
     telephone: c?.phone,
     address: c?.city ? { "@type": "PostalAddress", addressLocality: c.city, addressCountry: "IN" } : undefined,

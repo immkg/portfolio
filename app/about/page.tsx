@@ -10,6 +10,8 @@ export const metadata: Metadata = {
     "Mayank Kumar Gupta: engineering leader for SaaS and AI products, hands on throughout. " +
     "Language systems that hold their shape, platforms rather than apps, and small software built for real needs.",
   alternates: { canonical: "/about/" },
+  openGraph: { title: "About Mayank Kumar Gupta", url: "/about/", type: "profile",
+    description: "Engineering leader for SaaS and AI products, hands on throughout. Open to CTO, VP and Head of Engineering roles." },
 };
 
 export default function About() {

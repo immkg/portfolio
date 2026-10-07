@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "export": "next build",
-    "world": "python3 ../assistance/relaunch/scripts/export_world.py --out ."
+    "world": "python3 ../assistance/relaunch/scripts/export_world.py --out .",
+    "postbuild": "node scripts/og-ext.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

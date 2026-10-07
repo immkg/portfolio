@@ -18,6 +18,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${s.name} · ${s.group}`,
     description: s.line || `${s.name}: where Mayank Kumar Gupta used it, across ${s.projects.length} projects.`,
     alternates: { canonical: `/skills/${slug}/` },
+    openGraph: {
+      title: `${s.name} — Mayank Kumar Gupta`, url: `/skills/${slug}/`,
+      description: s.line || `${s.name}: where Mayank Kumar Gupta used it, across ${s.projects.length} projects.`,
+    },
   };
 }
 

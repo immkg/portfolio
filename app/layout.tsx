@@ -20,13 +20,17 @@ export const metadata: Metadata = {
   },
   description:
     "Engineering leader: skills, projects and a timeline, laid out as a world you can walk.",
-  openGraph: {
-    type: "website",
-    siteName: "Mayank Kumar Gupta",
-    url: "https://immkg.github.io/",
-    images: [{ url: "/og-card.jpg", width: 1200, height: 630 }],
-  },
-  twitter: { card: "summary_large_image", images: ["/og-card.jpg"] },
+  applicationName: "Mayank Kumar Gupta",
+  authors: [{ name: "Mayank Kumar Gupta", url: "https://immkg.github.io/about/" }],
+  creator: "Mayank Kumar Gupta",
+  keywords: [
+    "Mayank Kumar Gupta", "engineering leader", "CTO", "VP Engineering", "Head of Engineering",
+    "Director of Engineering", "SaaS", "AI", "document AI", "conversational AI", "portfolio",
+  ],
+  // each page sets its own title, description and address; the card image
+  // comes from the opengraph-image file beside the page
+  openGraph: { type: "website", siteName: "Mayank Kumar Gupta", locale: "en_IN" },
+  twitter: { card: "summary_large_image" },
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },
 };

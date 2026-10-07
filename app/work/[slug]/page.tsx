@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${p.label} · ${dom}`,
     description: [p.line, ...p.did].join(" ").slice(0, 300),
     alternates: { canonical: `/work/${slug}/` },
-    openGraph: { images: [{ url: `/world/icons/project-${slug}.webp` }] },
+    openGraph: { title: `${p.label} — Mayank Kumar Gupta`, description: p.line, url: `/work/${slug}/`, type: "article" },
   };
 }
 
