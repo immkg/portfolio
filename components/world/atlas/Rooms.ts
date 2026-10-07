@@ -26,8 +26,13 @@ export type Exhibit = {
   items?: { art: string; title: string; pick: Pick }[];
 };
 
+/** Something drawn that stands in a room for looks: a plant, a seat, a lamp. */
+export type Decor = { art: string; at: [number, number, number]; w: number; yaw?: number; flat?: boolean };
+
 export type RoomDef = {
   id: string;
+  wallArt: string; doorArt: string;    // drawn wallpaper and door building, under /world/room
+  decor: Decor[];
   title: string; kicker: string;
   pen: string; tint: string; wall: string;
   W: number; D: number; H: number;
@@ -43,7 +48,8 @@ const LANE = 38;                        // other doors: in the lanes between dis
 
 /** Wall spots for n frames: back wall low row, side walls low, then the upper rows. */
 function wallSpots(n: number, W: number, D: number, size: number, gap: number) {
-  const rows = [2.7, 2.7 + size + 1.6];
+  // the drawn frame stands taller than its picture, with a plaque under it
+  const rows = [3.4, 9.3];
   const out: { at: [number, number, number]; yaw: number; stand: [number, number] }[] = [];
   const back = Math.floor((W - 4) / (size + gap));
   const side = Math.floor((D - 7) / (size + gap));
@@ -81,11 +87,18 @@ export function buildRooms(w: WorldData): RoomDef[] {
     const x = Math.cos(a) * DIST - Math.sin(a) * BESIDE, z = Math.sin(a) * DIST + Math.cos(a) * BESIDE;
     const list = w.projects.filter((p) => p.domain === d)
       .sort((p, q) => (q.last ?? "").localeCompare(p.last ?? "") || q.tier - p.tier);
-    const W = list.length > 14 ? 44 : 38, D = list.length > 14 ? 26 : 22;
-    const spots = wallSpots(list.length, W, D, 3.4, 1.3);
+    const W = list.length > 14 ? 50 : 42, D = list.length > 14 ? 28 : 24;
+    const spots = wallSpots(list.length, W, D, 3.4, 1.6);
     rooms.push({
       id: `hall-${d}`, title: `${label[d]} hall`, kicker: `${list.length} projects, newest first`,
-      pen: PEN[d], tint: FILL[d], wall: "#fbfaf6", ...base(W, D),
+      wallArt: `wall-${d}`, doorArt: `door-hall-${d}`,
+      decor: [
+        { art: "fit-plant", at: [-W / 2 + 1.8, 0, -D / 2 + 1.8], w: 2.6 },
+        { art: "fit-plant", at: [W / 2 - 1.8, 0, -D / 2 + 1.8], w: 2.6 },
+        { art: "fit-seat", at: [0, 0, 1.5], w: 3.4 },
+        { art: "fit-rope", at: [W / 2 - 4, 0, D / 2 - 1.5], w: 3 },
+      ],
+      pen: PEN[d], tint: FILL[d], wall: "#fbfaf6", ...base(W, D), H: 15,
       door: { x, z, yaw: Math.atan2(-Math.cos(a), -Math.sin(a)) },
       text: `/work/?d=${d}`,
       exhibits: list.map((p, k) => ({
@@ -100,11 +113,22 @@ export function buildRooms(w: WorldData): RoomDef[] {
   {
     const order = ["decisions", "people", "incidents", "influence"];
     const list = [...w.stories].sort((s, t) => order.indexOf(s.family ?? "decisions") - order.indexOf(t.family ?? "decisions"));
-    const W = 40, D = 24, spots = wallSpots(list.length, W, D, 3.4, 1.3);
+    const W = 46, D = 26, spots = wallSpots(list.length, W, D, 3.4, 1.6);
     const fam: Record<string, string> = { decisions: "A call I made", people: "People", incidents: "When it broke", influence: "Changing minds" };
     rooms.push({
       id: "stories", title: "Story gallery", kicker: `${list.length} stories, told short`,
-      pen: "#c35f92", tint: "#f8e3ee", wall: "#fffaf6", ...base(W, D), door: lane(4, n), text: "/work/?kind=stories",
+      wallArt: "wall-search-commerce", doorArt: "door-stories",
+      decor: [
+        { art: "gal-bench", at: [0, 0, 2], w: 5 },
+        { art: "gal-easel", at: [W / 2 - 3, 0, D / 2 - 3], w: 2.6 },
+        { art: "gal-lamp", at: [-W / 2 + 2, 0, -D / 2 + 2], w: 1.6 },
+        // the four kinds of story, hung high on the side walls above the frames
+        { art: "gal-decisions", at: [-W / 2 + 0.2, 12.2, -D / 4], w: 2.2, yaw: Math.PI / 2 },
+        { art: "gal-people", at: [-W / 2 + 0.2, 12.2, D / 6], w: 2.2, yaw: Math.PI / 2 },
+        { art: "gal-incidents", at: [W / 2 - 0.2, 12.2, -D / 4], w: 2.2, yaw: -Math.PI / 2 },
+        { art: "gal-influence", at: [W / 2 - 0.2, 12.2, D / 6], w: 2.2, yaw: -Math.PI / 2 },
+      ],
+      pen: "#c35f92", tint: "#f8e3ee", wall: "#fffaf6", ...base(W, D), H: 15, door: lane(4, n), text: "/work/?kind=stories",
       exhibits: list.map((s, k) => {
         const p = w.projects.find((x) => x.slug === s.project);
         return {
@@ -127,7 +151,15 @@ export function buildRooms(w: WorldData): RoomDef[] {
     const began = (y: number) => w.projects.filter((p) => (p.first ?? "").startsWith(String(y))).length;
     rooms.push({
       id: "timeline", title: "Timeline hall", kicker: `${first} to now, one arch per role`,
-      pen: "#009bb4", tint: "#d9f1f5", wall: "#f7fbfc", ...base(W, D), door: lane(5, n), text: "/about/",
+      wallArt: "wall-conversational-ai", doorArt: "door-timeline",
+      decor: [
+        { art: "time-clock", at: [W / 2 - 4, 6.5, -D / 2 + 0.15], w: 2.6 },
+        { art: "time-lantern", at: [-W / 4, 8.4, -D / 2 + 2.5], w: 1.6 },
+        { art: "time-lantern", at: [W / 4, 8.4, -D / 2 + 2.5], w: 1.6 },
+        { art: "time-milestone", at: [W / 2 - 3, 0, D / 2 - 3], w: 1.8 },
+        { art: "time-rope", at: [0, 0, D / 2 - 1], w: 6 },
+      ],
+      pen: "#009bb4", tint: "#d9f1f5", wall: "#f7fbfc", ...base(W, D), H: 14, door: lane(5, n), text: "/about/",
       exhibits: [
         // oldest role on the left; arches spaced evenly, the plaques carry the dates
         ...[...w.roles].sort((p, q) => startYear(p.dates) - startYear(q.dates)).map((r, k, all) => {
@@ -135,6 +167,7 @@ export function buildRooms(w: WorldData): RoomDef[] {
           return {
             id: r.id, kind: "arch" as const, at: [x, 0, -D / 2 + 3.2] as [number, number, number], yaw: 0, w: 6, h: 7,
             title: r.title, sub: `${r.employer} · ${r.dates}`, pen: ["#009bb4", "#5a62e8", "#d8871a"][k % 3],
+            art: ["room/time-arch-teal", "room/time-arch-indigo", "room/time-arch-amber"][k % 3],
             pick: { kind: "about" } as Pick, stand: [x, -D / 2 + 7.5] as [number, number],
           };
         }),
@@ -151,15 +184,24 @@ export function buildRooms(w: WorldData): RoomDef[] {
   {
     const built = w.about?.built ?? [];
     const W = 38, D = 20, gap = (W - 8) / Math.max(1, built.length);
-    const props = ["laptop", "notebook", "monitor", "headphones", "books", "lamp-desk"];
+    // each build gets the drawn object that says what it is
+    const thing = (n: string) => /ludo/i.test(n) ? "room/lab-ludo" : /navo|plan/i.test(n) ? "room/lab-planner"
+      : /gmail|mail/i.test(n) ? "room/lab-envelopes" : /schedul/i.test(n) ? "room/lab-calendar"
+      : /class/i.test(n) ? "room/lab-chalkboard" : "room/lab-toolbox";
     rooms.push({
       id: "lab", title: "The lab", kicker: "Built for myself",
+      wallArt: "wall-platform-internal", doorArt: "door-lab",
+      decor: [
+        { art: "lab-toolbox", at: [W / 2 - 3.5, 0, D / 2 - 3], w: 2.6 },
+        { art: "lab-phone", at: [-W / 2 + 3, 0, -D / 2 + 1.6], w: 1.6 },
+        { art: "fit-plant", at: [W / 2 - 1.8, 0, -D / 2 + 1.8], w: 2.4 },
+      ],
       pen: "#6b953a", tint: "#e6f0d6", wall: "#fbfcf6", ...base(W, D), door: lane(3, n), text: "/about/",
       exhibits: built.map((b, k) => {
         const x = -W / 2 + 4 + gap * (k + 0.5);
         return {
           id: `built-${k}`, kind: "bench" as const, at: [x, 0, -D / 2 + 4] as [number, number, number], yaw: 0, w: 5, h: 2.4,
-          title: b.name, sub: "open on GitHub ↗", art: props[k % props.length], pen: "#6b953a",
+          title: b.name, sub: "open on GitHub ↗", art: thing(b.name), pen: "#6b953a",
           pick: { kind: "built", i: k } as Pick, stand: [x, -D / 2 + 8] as [number, number],
         };
       }),
@@ -182,6 +224,12 @@ export function buildRooms(w: WorldData): RoomDef[] {
     });
     rooms.push({
       id: "workshop", title: "Skills workshop", kicker: `${w.skills.length} tools on ${fams.length} boards`,
+      wallArt: "wall-data-crawling", doorArt: "door-workshop",
+      decor: [
+        { art: "shop-bench", at: [0, 0, 1], w: 5 },
+        { art: "shop-sawhorse", at: [W / 2 - 4, 0, D / 2 - 3], w: 3.6 },
+        { art: "shop-rack", at: [-W / 2 + 3, 0, D / 2 - 6], w: 2.4 },
+      ],
       pen: "#398ad6", tint: "#dcebfa", wall: "#f8fbff", ...base(W, D), door: lane(1, n), text: "/work/?kind=skills",
       exhibits: fams.map((f, k) => {
         const list = w.skills.filter((s) => s.family === f).sort((a, b) => b.strength - a.strength || a.name.localeCompare(b.name));
@@ -199,14 +247,21 @@ export function buildRooms(w: WorldData): RoomDef[] {
     const c = w.about?.contact;
     const W = 34, D = 18;
     const stalls: Omit<Exhibit, "at" | "stand">[] = [
-      { id: "plane", kind: "kiosk", yaw: 0, w: 5, h: 3, title: "Throw a paper plane", sub: "write a line, I'll find it", pen: "#5a62e8", pick: { kind: "reach" } },
-      ...(c?.resume ? [{ id: "resume", kind: "kiosk" as const, yaw: 0, w: 5, h: 3, title: "Take a résumé", sub: "PDF, one page", pen: "#d8871a", href: c.resume, download: true }] : []),
-      { id: "qr", kind: "kiosk", yaw: 0, w: 5, h: 3, title: "Scan to save me", sub: "QR and contact card", pen: "#12a98a", pick: { kind: "reach" } },
-      ...(c?.phone ? [{ id: "call", kind: "kiosk" as const, yaw: 0, w: 5, h: 3, title: "Call or WhatsApp", sub: c.phone, pen: "#e0557f", href: `tel:${c.phone.replace(/\s+/g, "")}` }] : []),
+      { id: "plane", kind: "kiosk", yaw: 0, w: 5, h: 3, title: "Throw a paper plane", sub: "write a line, I'll find it", pen: "#5a62e8", art: "room/post-box", pick: { kind: "reach" } },
+      ...(c?.resume ? [{ id: "resume", kind: "kiosk" as const, yaw: 0, w: 5, h: 3, title: "Take a résumé", sub: "PDF, one page", pen: "#d8871a", art: "room/post-rack", href: c.resume, download: true }] : []),
+      { id: "qr", kind: "kiosk", yaw: 0, w: 5, h: 3, title: "Scan to save me", sub: "QR and contact card", pen: "#12a98a", art: "room/post-poster", pick: { kind: "reach" } },
+      ...(c?.phone ? [{ id: "call", kind: "kiosk" as const, yaw: 0, w: 5, h: 3, title: "Call or WhatsApp", sub: c.phone, pen: "#e0557f", art: "room/post-booth", href: `tel:${c.phone.replace(/\s+/g, "")}` }] : []),
     ];
     const gap = (W - 6) / stalls.length;
     rooms.push({
       id: "post", title: "Post office", kicker: "Every way to reach me",
+      wallArt: "wall-document-ai", doorArt: "door-post",
+      decor: [
+        { art: "post-counter", at: [W / 2 - 5, 0, D / 2 - 3.5], w: 5 },
+        { art: "post-scales", at: [W / 2 - 5.8, 2.15, D / 2 - 3.4], w: 1.6 },
+        { art: "post-parcels", at: [-W / 2 + 6, 0, D / 2 - 2.5], w: 2.6 },
+        { art: "post-slot", at: [0, 7.3, -D / 2 + 0.15], w: 3.2 },
+      ],
       pen: "#5a62e8", tint: "#e4e6fb", wall: "#fbfbff", ...base(W, D), door: lane(0, n), text: "/about/",
       exhibits: stalls.map((s, k) => {
         const x = -W / 2 + 3 + gap * (k + 0.5);
