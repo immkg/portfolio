@@ -30,24 +30,30 @@ export function buildColliders(w: WorldData): Collider[] {
   return out;
 }
 
+/* how high a single step can climb: kerbs, gate pads and the centre's
+   pedestal are walked onto; plinths and skill stones are walked round */
+export const STEP = 0.75;
+
 /** Height of whatever the feet can stand on here, given how high they are. */
 export function groundAt(c: Collider[], x: number, z: number, feet: number) {
   let g = 0;
   for (const o of c) {
-    if (o.h > g && o.h <= feet + 0.35 && (x - o.x) ** 2 + (z - o.z) ** 2 < o.r * o.r) g = o.h;
+    if (o.h > g && o.h <= feet + STEP && (x - o.x) ** 2 + (z - o.z) ** 2 < o.r * o.r) g = o.h;
   }
   return g;
 }
 
-/** Push a position out of every circle it is inside and too low to stand on. */
+/** Push a position out of every circle it is inside and too low to stand on.
+ *  The push carries a little sideways drift, so walking dead into the middle
+ *  of something steers round it instead of stalling against it. */
 export function slide(c: Collider[], p: { x: number; z: number }, feet: number, body = 0.6) {
   for (const o of c) {
-    if (feet >= o.h - 0.35) continue;
+    if (feet >= o.h - STEP) continue;
     const dx = p.x - o.x, dz = p.z - o.z, rr = o.r + body;
     const d2 = dx * dx + dz * dz;
     if (d2 < rr * rr && d2 > 1e-6) {
       const d = Math.sqrt(d2), k = (rr - d) / d;
-      p.x += dx * k; p.z += dz * k;
+      p.x += dx * k - dz * k * 0.35; p.z += dz * k + dx * k * 0.35;
     }
   }
 }

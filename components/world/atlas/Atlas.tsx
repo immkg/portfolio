@@ -41,6 +41,8 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     plane: { current: null },
     sound: { current: false },
     hop: { current: false },
+    trip: { current: null },
+    arrive: { current: null },
   }).current;
 
   /* first person: walk in at the avatar's eyes, or fly back out */
@@ -136,12 +138,13 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
 
   const spots = useMemo(() => (w ? skillSpots(w.skills) : {}), [w]);
 
-  /* picking something opens its read and walks you over to it */
+  /* picking something walks you over to it, and its card opens when you
+     arrive (at once in first person, where you are already looking at it) */
   const onPick = useCallback((p: Pick) => {
     if (!w) return;
     if (document.pointerLockElement) document.exitPointerLock();   // a card needs the mouse back
-    setPick(p);
     setQ("");
+    shared.arrive.current = null;
     let to: [number, number] | null = null;
     if (p.kind === "project") {
       const x = w.projects.find((o) => o.slug === p.slug);
@@ -154,12 +157,18 @@ export default function Atlas({ motion }: { motion: "full" | "static" }) {
     } else if (p.kind === "district") to = districtSpot(w.districts.indexOf(p.id), w.districts.length, w.plaza + 14);
     else if (p.kind === "reach" || p.kind === "about") to = null;   // these cards come to you
     else to = [0, 4];
-    if (to) {
-      // stop just short of it on the camera's side, so it stands in front of
-      // you rather than behind your back
-      const back = p.kind === "about" ? 8 : 7, yw = shared.yaw.current;
-      shared.target.current = new THREE.Vector3(to[0] + Math.sin(yw) * back, 0, to[1] + Math.cos(yw) * back);
-    }
+    if (!to || shared.view.current === "fpv") { setPick(p); return; }
+    // stop just short of it on the camera's side, so it stands in front of
+    // you rather than behind your back
+    const back = p.kind === "about" ? 8 : 7, yw = shared.yaw.current;
+    const goal = new THREE.Vector3(to[0] + Math.sin(yw) * back, 0, to[1] + Math.cos(yw) * back);
+    if (Math.hypot(goal.x - shared.me.current.x, goal.z - shared.me.current.z) < 1.5) { setPick(p); return; }
+    let done = false;
+    const open = () => { if (!done) { done = true; setPick(p); } };
+    shared.arrive.current = { goal, focus: to, open };
+    shared.target.current = goal;
+    // never leave a card waiting on a walk that got stuck
+    setTimeout(() => { if (shared.arrive.current?.goal === goal) { shared.arrive.current = null; open(); } }, 5000);
   }, [w, spots, shared]);
 
   /* a link can open the world on one thing: ?p=project:slug, skill:slug,

@@ -7,6 +7,8 @@ import * as THREE from "three";
 import Cutout from "../Cutout";
 import { Decal, CAMERA_YAW, tap, paint, WorldMarks, Sky } from "./Marks";
 import { type AimTarget, buildColliders, buildTargets, groundAt, slide } from "./Colliders";
+import { type Anim, Avatar, Footprints, RouteMarks, newAnim } from "./Avatar";
+import { planTrip } from "./Trip";
 import {
   type WorldData, type Pick, type Project, PEN, FILL, FAMILY_INK, ICON,
   districtSpot, skillSpots, plinth, span,
@@ -48,6 +50,10 @@ export type Shared = {
   sound: React.MutableRefObject<boolean>;
   /** a hop was asked for */
   hop: React.MutableRefObject<boolean>;
+  /** the trip under way, for the minimap: its route, and whether it is flown */
+  trip: React.MutableRefObject<{ pts: [number, number][]; fly: boolean } | null>;
+  /** a card waiting for me to arrive: opened when I reach this goal */
+  arrive: React.MutableRefObject<{ goal: THREE.Vector3; focus: [number, number]; open: () => void } | null>;
 };
 
 
@@ -681,20 +687,25 @@ function footstep() {
 function Visitor({ w, shared, motion, onPick }: {
   w: WorldData; shared: Shared; motion: "full" | "static"; onPick: (p: Pick) => void;
 }) {
-  const body = useRef<THREE.Group>(null);
-  const walker = useRef<THREE.Group>(null);
   const { camera, scene } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const vel = useRef(new THREE.Vector3());
   const vy = useRef(0);                     // vertical speed, for hops
-  const faceRef = useRef("front");
-  const [face, setFace] = useState("front");
   const lookAt = useRef(new THREE.Vector3(0, 2, 0));
-  const phase = useRef(0);                  // walking phase, for head bob and steps
   const lastStep = useRef(0);
   const colliders = useMemo(() => buildColliders(w), [w]);
   const targets = useMemo(() => buildTargets(w), [w]);
   const aimAt = useRef(0);
+  const anim = useRef<Anim>(newAnim());
+
+  /* the trip under way: the route's points and how far along, or a flight */
+  const trip = useRef<{
+    goal: THREE.Vector3; pts: [number, number][]; i: number; len: number;
+    best: number; since: number;            // closest yet to the next point, and when
+    fly: { t0: number; dur: number; from: THREE.Vector3; to: THREE.Vector3; top: number } | null;
+  } | null>(null);
+  /* the camera turns to look down the road, unless the visitor turns it */
+  const cam = useRef({ yaw0: 0, set: 0, mine: false, settle: false });
 
   useEffect(() => {
     const typing = (e: KeyboardEvent) => (e.target as HTMLElement)?.closest?.("input, textarea");
@@ -712,16 +723,34 @@ function Visitor({ w, shared, motion, onPick }: {
     return () => { window.removeEventListener("keydown", d); window.removeEventListener("keyup", u); };
   }, [shared]);
 
+  /** Reached the goal: turn to what was picked, point at it, then open its card. */
+  const arrive = (goal: THREE.Vector3) => {
+    const a = anim.current, pending = shared.arrive.current;
+    a.dest = null; a.route = null; shared.trip.current = null;
+    if (!pending || pending.goal !== goal) return;
+    shared.arrive.current = null;
+    const p = shared.me.current, yw = shared.yaw.current;
+    // is the thing to my left or right, as the camera sees it?
+    const side = (pending.focus[0] - p.x) * Math.cos(yw) - (pending.focus[1] - p.z) * Math.sin(yw);
+    if (motion === "static") { pending.open(); return; }
+    a.present = { until: performance.now() / 1000 + 0.4, mirror: side < 0 };
+    setTimeout(pending.open, 320);
+  };
+
   useFrame((_, dt) => {
     dt = Math.min(dt, 0.05);
     const k = keys.current, pos = shared.me.current, target = shared.target;
     const fpv = shared.view.current === "fpv";
+    const a = anim.current, now = performance.now();
+    const still = motion === "static";
 
     // ease the camera between above and the eyes (a cut for reduced motion)
     const want = fpv ? 1 : 0;
-    shared.blend.current = motion === "static" ? want
-      : THREE.MathUtils.damp(shared.blend.current, want, 3.2, dt);
+    shared.blend.current = still ? want : THREE.MathUtils.damp(shared.blend.current, want, 3.2, dt);
     const t = shared.blend.current;
+
+    // did the visitor turn the camera themselves since we last turned it?
+    if (Math.abs(shared.yaw.current - cam.current.set) > 1e-4) { cam.current.mine = true; cam.current.settle = false; }
 
     const step = new THREE.Vector3();
     const turn = (k["q"] ? 1 : 0) - (k["e"] ? 1 : 0);
@@ -736,73 +765,166 @@ function Visitor({ w, shared, motion, onPick }: {
     const run = k["shift"] ? 2 : 1;
     const speed = fpv ? 9 * run : 18 * Math.max(1, shared.far.current * 0.8) * run;
 
+    // a new place to go: plan the trip there
+    if (target.current && (!trip.current || trip.current.goal !== target.current)) {
+      const goal = target.current;
+      const plan = planTrip(w, [pos.x, pos.z], [goal.x, goal.z]);
+      trip.current = { goal, pts: plan.pts, i: 1, len: plan.len, fly: null, best: Infinity, since: now };
+      if (plan.fly && !still && !fpv) {
+        const dist = plan.len;
+        trip.current.fly = {
+          t0: now, dur: THREE.MathUtils.clamp(dist / 55, 1.3, 2.6) * 1000,
+          from: pos.clone(), to: new THREE.Vector3(goal.x, 0, goal.z), top: Math.min(26, 6 + dist * 0.12),
+        };
+      }
+      a.route = plan.fly ? null : plan.pts.slice(1);
+      a.dest = [goal.x, goal.z];
+      shared.trip.current = { pts: plan.pts, fly: !!trip.current.fly };
+      a.idle = 0; a.present = null;
+      cam.current = { yaw0: shared.yaw.current, set: shared.yaw.current, mine: fpv || still, settle: false };
+    }
+
+    let heading: number | null = null;     // which way the trip is going, for the camera
     if (step.lengthSq() > 0.01) {
+      // the visitor took the wheel: drop the trip and anything waiting on it
       const mag = Math.min(1, step.length());
       step.applyAxisAngle(new THREE.Vector3(0, 1, 0), shared.yaw.current);
-      target.current = null;
+      if (trip.current && !trip.current.fly) {
+        trip.current = null; target.current = null; shared.arrive.current = null;
+        a.route = null; a.dest = null; shared.trip.current = null;
+      }
       step.normalize().multiplyScalar(speed * mag);
-    } else if (target.current) {
-      const to = target.current.clone().setY(0).sub(pos.clone().setY(0));
-      if (motion === "static") { pos.x = target.current.x; pos.z = target.current.z; target.current = null; }
-      else if (to.length() < 0.6) target.current = null;
-      // long journeys go faster, so nobody waits to cross the map
-      else step.copy(to.normalize().multiplyScalar(Math.max(speed, Math.min(70, to.length() * 1.6))));
+      a.idle = 0; a.present = null; cam.current.settle = false;
+    } else if (trip.current && !trip.current.fly) {
+      const tr = trip.current;
+      if (still) {
+        pos.x = tr.goal.x; pos.z = tr.goal.z;
+        trip.current = null; target.current = null; arrive(tr.goal);
+      } else {
+        // walk the route point by point; long routes walk briskly
+        const [nx, nz] = tr.pts[tr.i];
+        const to = new THREE.Vector3(nx - pos.x, 0, nz - pos.z);
+        const last = tr.i === tr.pts.length - 1;
+        // something solid in the way of this point: if I have stopped getting
+        // closer for a moment, call it reached and carry on
+        const d = to.length();
+        if (d < tr.best - 0.05) { tr.best = d; tr.since = now; }
+        const stuck = now - tr.since > 300;
+        if (stuck || d < (last ? 0.6 : 1.1)) {
+          tr.best = Infinity; tr.since = now;
+          if (last) { trip.current = null; target.current = null; arrive(tr.goal); }
+          else { tr.i += 1; a.route = tr.pts.slice(tr.i); shared.trip.current = { pts: tr.pts.slice(tr.i - 1), fly: false }; }
+        } else {
+          const brisk = Math.max(speed, Math.min(38, tr.len / 1.9));
+          step.copy(to.normalize().multiplyScalar(last ? Math.min(brisk, Math.max(10, to.length() * 4)) : brisk));
+          heading = Math.atan2(step.x, step.z);
+        }
+      }
     }
 
-    if (motion === "static") vel.current.copy(step);
-    else vel.current.lerp(step, Math.min(1, dt * 7));
-    pos.x += vel.current.x * dt; pos.z += vel.current.z * dt;
-    const r = Math.hypot(pos.x, pos.z), lim = 150;
-    if (r > lim) { pos.x *= lim / r; pos.z *= lim / r; }
+    const fl = trip.current?.fly;
+    if (fl) {
+      // the paper plane: up in an arc, a gentle bank, and down by the goal
+      const s = Math.min(1, (now - fl.t0) / fl.dur);
+      const e = s < 0.5 ? 2 * s * s : 1 - Math.pow(-2 * s + 2, 2) / 2;
+      const prevX = pos.x, prevZ = pos.z;
+      pos.x = THREE.MathUtils.lerp(fl.from.x, fl.to.x, e);
+      pos.z = THREE.MathUtils.lerp(fl.from.z, fl.to.z, e);
+      pos.y = THREE.MathUtils.lerp(fl.from.y, 0, s) + 4 * fl.top * s * (1 - s);
+      a.flying = s < 1;
+      a.heading = Math.atan2(fl.to.x - fl.from.x, fl.to.z - fl.from.z);
+      heading = a.heading;
+      a.bank = Math.sin(s * Math.PI * 2) * 0.35;
+      vel.current.set((pos.x - prevX) / dt, 0, (pos.z - prevZ) / dt);
+      a.floor = 0; vy.current = 0;
+      if (s >= 1) {
+        a.flying = false;
+        pos.y = groundAt(colliders, pos.x, pos.z, 0);
+        slide(colliders, pos, pos.y);
+        a.landed = { t: now / 1000, x: pos.x, z: pos.z };
+        vel.current.set(0, 0, 0);
+        const goal = trip.current!.goal;
+        trip.current = null; target.current = null; arrive(goal);
+      }
+    } else {
+      if (still) vel.current.copy(step);
+      else vel.current.lerp(step, Math.min(1, dt * 7));
+      pos.x += vel.current.x * dt; pos.z += vel.current.z * dt;
+      const r = Math.hypot(pos.x, pos.z), lim = 150;
+      if (r > lim) { pos.x *= lim / r; pos.z *= lim / r; }
 
-    // hop, gravity, standing on whatever is underfoot, sliding round the rest
-    if (shared.hop.current) {
-      shared.hop.current = false;
-      if (pos.y <= groundAt(colliders, pos.x, pos.z, pos.y) + 0.05) vy.current = 9.5;
+      // hop, gravity, standing on whatever is underfoot, sliding round the rest
+      if (shared.hop.current) {
+        shared.hop.current = false;
+        if (pos.y <= groundAt(colliders, pos.x, pos.z, pos.y) + 0.05) vy.current = 9.5;
+      }
+      vy.current -= 26 * dt;
+      pos.y += vy.current * dt;
+      const floor = groundAt(colliders, pos.x, pos.z, pos.y);
+      if (pos.y < floor) { pos.y = floor; vy.current = 0; }
+      slide(colliders, pos, pos.y);
+      a.floor = floor;
     }
-    vy.current -= 26 * dt;
-    pos.y += vy.current * dt;
-    const floor = groundAt(colliders, pos.x, pos.z, pos.y);
-    if (pos.y < floor) { pos.y = floor; vy.current = 0; }
-    slide(colliders, pos, pos.y);
 
-    // the walking rhythm: head bob in first person, and the steps if sound is on
+    // the walking rhythm: head bob, steps if sound is on, and a footprint per step
     const v = Math.hypot(vel.current.x, vel.current.z);
-    if (v > 0.5 && pos.y <= floor + 0.05) {
-      phase.current += dt * Math.min(v, 18) * 0.9;
-      if (shared.sound.current && fpv && phase.current - lastStep.current > Math.PI) {
-        lastStep.current = phase.current; footstep();
+    const grounded = !a.flying && pos.y <= a.floor + 0.05;
+    if (v > 0.5 && grounded) {
+      a.phase += dt * Math.min(v, 22) * 0.9;
+      if (a.phase - lastStep.current > Math.PI) {
+        lastStep.current = a.phase;
+        if (shared.sound.current && fpv) footstep();
+        if (!fpv && !still) {
+          const ang = Math.atan2(vel.current.x, vel.current.z);
+          a.prints.push({ x: pos.x, z: pos.z, a: ang, t: now / 1000, s: a.prints.length % 2 ? 1 : -1 });
+        }
       }
     }
+    a.v = a.flying ? 0 : v;
+    if (v < 0.4 && !trip.current && !a.flying) a.idle += dt; else if (v >= 0.4) a.idle = 0;
+    if (fpv) a.idle = 0;
 
-    if (body.current) {
-      body.current.position.set(pos.x, pos.y, pos.z);
-      if (walker.current) {
-        walker.current.visible = t < 0.6;   // in first person, you are me
-        walker.current.position.y = motion === "static" ? 0 : Math.abs(Math.sin(performance.now() / 110)) * Math.min(v, 20) * 0.016;
+    // which way I face, as the camera sees it, and how hard I lean sideways
+    const yw0 = shared.yaw.current;
+    if (v > 0.4 && !a.flying) {
+      let ang = Math.atan2(vel.current.x, vel.current.z) - yw0;
+      ang = Math.atan2(Math.sin(ang), Math.cos(ang));
+      a.face = ang > 2.0 || ang < -2.0 ? "back" : ang > 0.6 ? "right" : ang < -0.6 ? "left" : "front";
+    }
+    a.side = vel.current.x * Math.cos(yw0) - vel.current.z * Math.sin(yw0);
+
+    // on a trip, the camera swings round to look the way I am going; after
+    // it, it settles back where the visitor left it
+    if (!cam.current.mine && !fpv) {
+      if (heading !== null) {
+        const want = heading + Math.PI;            // the camera sits behind me
+        const d = Math.atan2(Math.sin(want - shared.yaw.current), Math.cos(want - shared.yaw.current));
+        shared.yaw.current += d * Math.min(1, dt * 0.9);
+        cam.current.settle = true;
+      } else if (cam.current.settle && !trip.current) {
+        const d = Math.atan2(Math.sin(cam.current.yaw0 - shared.yaw.current), Math.cos(cam.current.yaw0 - shared.yaw.current));
+        shared.yaw.current += d * Math.min(1, dt * 1.8);
+        if (Math.abs(d) < 0.01) cam.current.settle = false;
       }
-      if (v > 0.4) {
-        let a = Math.atan2(vel.current.x, vel.current.z) - shared.yaw.current;
-        a = Math.atan2(Math.sin(a), Math.cos(a));
-        const next = a > 2.0 || a < -2.0 ? "back" : a > 0.6 ? "right" : a < -0.6 ? "left" : "front";
-        if (next !== faceRef.current) { faceRef.current = next; setFace(next); }
-      }
+      cam.current.set = shared.yaw.current;
     }
 
     // where each view would put the camera, mixed by the blend
     const narrow = window.innerWidth < 720 ? 1.55 : 1;
     const f = shared.far.current * narrow;
     const R = 63 * f, yw = shared.yaw.current, pt = shared.pitch.current;
+    // in flight the camera keeps nearer the ground than I do, so the arc shows
+    const camY = a.flying ? pos.y * 0.45 : pos.y;
     const tpCam = new THREE.Vector3(
-      pos.x + R * Math.sin(yw) * Math.cos(pt), pos.y + R * Math.sin(pt), pos.z + R * Math.cos(yw) * Math.cos(pt));
-    const tpLook = new THREE.Vector3(pos.x, pos.y + 2, pos.z);
-    const bob = motion === "static" ? 0 : Math.sin(phase.current * 2) * 0.09 * Math.min(1, v / 6);
+      pos.x + R * Math.sin(yw) * Math.cos(pt), camY + R * Math.sin(pt), pos.z + R * Math.cos(yw) * Math.cos(pt));
+    const tpLook = new THREE.Vector3(pos.x, camY + 2, pos.z);
+    const bob = still ? 0 : Math.sin(a.phase * 2) * 0.09 * Math.min(1, v / 6);
     const fpCam = new THREE.Vector3(pos.x, pos.y + EYE + bob, pos.z);
     const lk = shared.look.current;
     const fpLook = fpCam.clone().add(new THREE.Vector3(-Math.sin(yw) * Math.cos(lk), Math.sin(lk), -Math.cos(yw) * Math.cos(lk)).multiplyScalar(10));
     const camWant = tpCam.lerp(fpCam, t);
     const lookWant = tpLook.lerp(fpLook, t);
-    if (motion === "static" || t > 0.98) { camera.position.copy(camWant); lookAt.current.copy(lookWant); }
+    if (still || t > 0.98) { camera.position.copy(camWant); lookAt.current.copy(lookWant); }
     else {
       camera.position.lerp(camWant, Math.min(1, dt * (2.6 + t * 12)));
       lookAt.current.lerp(lookWant, Math.min(1, dt * (4 + t * 12)));
@@ -814,8 +936,8 @@ function Visitor({ w, shared, motion, onPick }: {
     if (fog) { fog.near = THREE.MathUtils.lerp(170, 55, t); fog.far = THREE.MathUtils.lerp(420, 230, t); }
 
     // the crosshair: the target nearest the centre of view, within reach
-    if (fpv && performance.now() - aimAt.current > 90) {
-      aimAt.current = performance.now();
+    if (fpv && now - aimAt.current > 90) {
+      aimAt.current = now;
       const eye = camera.position, dir = new THREE.Vector3();
       camera.getWorldDirection(dir);
       let best: AimTarget | null = null, bestScore = Infinity;
@@ -832,22 +954,22 @@ function Visitor({ w, shared, motion, onPick }: {
   });
 
   return (
-    <group ref={body}>
-      {/* the walker is drawn as me: click me to read more about me */}
-      <group
-        ref={walker}
-        onClick={(e) => { e.stopPropagation(); if (tap(e)) onPick({ kind: "about" }); }}
-        onPointerOver={() => (document.body.style.cursor = "pointer")}
-        onPointerOut={() => (document.body.style.cursor = "")}
-      >
-        <Cutout src={`walker-${face}`} width={2.6} position={[0, 0, 0]} anchor="bottom" billboard />
-      </group>
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.95, 20]} />
-        <meshBasicMaterial color={INK} transparent opacity={0.12} />
-      </mesh>
-    </group>
+    <>
+      {/* in first person, you are me, so the drawn me steps aside */}
+      <AvatarWhenOutside shared={shared} anim={anim} motion={motion} onPick={onPick} />
+      <Footprints anim={anim} />
+      <RouteMarks me={shared.me} anim={anim} />
+    </>
   );
+}
+
+/** The drawn me, hidden once the camera is behind my eyes. */
+function AvatarWhenOutside({ shared, anim, motion, onPick }: {
+  shared: Shared; anim: React.MutableRefObject<Anim>; motion: "full" | "static"; onPick: (p: Pick) => void;
+}) {
+  const g = useRef<THREE.Group>(null);
+  useFrame(() => { if (g.current) g.current.visible = shared.blend.current < 0.6; });
+  return <group ref={g}><Avatar me={shared.me} anim={anim} motion={motion} onPick={onPick} /></group>;
 }
 
 /* ---------------- a paper plane thrown from the eyes ---------------- */
