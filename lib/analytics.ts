@@ -27,5 +27,7 @@ export function startAnalytics() {
 
 /** A named moment in a visit: what was opened, how someone said hi. */
 export function track(event: string, props?: Record<string, unknown>) {
-  if (started) posthog.capture(event, props);
+  // ask PostHog itself, not a local flag: a module flag can be a separate
+  // copy in another bundle chunk and never see the start
+  if ((posthog as any).__loaded) posthog.capture(event, props);
 }
