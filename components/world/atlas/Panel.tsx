@@ -215,8 +215,7 @@ function AboutCard({ w, onPick }: { w: WorldData; onPick: (p: Pick) => void }) {
           <li>The stones round the plaza are skills. Pick one to see where it was used.</li>
         </ul>
       </section>
-      <p><a className="world-enter" href={`${ROOT}/studio/`}>Step into the studio</a>{" "}
-         <button className="world-enter" onClick={() => onPick({ kind: "district", id: w.districts[0] })}>Start with a district</button></p>
+      <p><button className="world-enter" onClick={() => onPick({ kind: "district", id: w.districts[0] })}>Start with a district</button></p>
     </>
   );
 }

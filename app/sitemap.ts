@@ -12,7 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${BASE}${p}`, lastModified: at, changeFrequency: "monthly" as const, priority,
   });
   return [
-    page("/", 1), page("/work/", 0.9), page("/about/", 0.8), page("/studio/", 0.4),
+    page("/", 1), page("/work/", 0.9), page("/about/", 0.8),
     ...w.projects.map((p) => page(`/work/${p.slug}/`, p.tier === 3 ? 0.8 : 0.6)),
     ...w.skills.map((s) => page(`/skills/${s.slug}/`, 0.5)),
   ];
