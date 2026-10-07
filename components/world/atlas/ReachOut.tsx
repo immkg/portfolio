@@ -93,7 +93,7 @@ export default function ReachOut({ name, title, c }: { name: string; title: stri
       <p className="plane-sub">Write a line. I&rsquo;ll find it in my inbox.</p>
       <textarea
         value={msg} onChange={(e) => setMsg(e.target.value)} rows={3}
-        placeholder="Hi Mayank, we're hiring a Head of Engineering…" aria-label="Your message"
+        placeholder="Hi Mayank, I took a walk through your world and have something worth a coffee…" aria-label="Your message"
       />
       {!landed ? (
         <button className="plane-throw" onClick={throwPlane} disabled={flying}>Fold &amp; throw ✈</button>
